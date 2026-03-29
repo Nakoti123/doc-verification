@@ -1,0 +1,2013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartQC Verifier</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- ════════════════════════════════════════════════════════════
+     CONFIG  ──  Loaded first so every subsequent script can use it.
+     In production just change the <script src> to your config file.
+     ════════════════════════════════════════════════════════════ -->
+<script src="smartqc_config.js"></script>
+
+<style>
+:root{
+  --bg:#f4f6fa;--white:#fff;--border:#e2e6f0;--border2:#c8d0e4;
+  --text:#1a1e2e;--text2:#5a6380;--text3:#9099b5;
+  --blue:#3b6ef8;--blue-lt:#eef2ff;
+  --green:#17a96e;--green-lt:#e6f7f1;
+  --red:#e5354e;--red-lt:#fdeef1;
+  --amber:#d97706;--amber-lt:#fef3e2;
+  --purple:#7c3aed;--purple-lt:#f3f0ff;
+  --radius:10px;--shadow:0 2px 12px rgba(0,0,0,.07);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+
+/* HEADER */
+.hdr{height:52px;background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;box-shadow:var(--shadow);}
+.logo{font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px;}
+.logo-badge{background:var(--blue);color:#fff;border-radius:6px;padding:2px 8px;font-size:12px;}
+.hdr-spacer{flex:1}
+.prog-pill{font-size:12px;color:var(--text2);background:var(--bg);padding:4px 12px;border-radius:20px;border:1px solid var(--border);}
+.prog-pill b{color:var(--text);}
+/* import area in header */
+.import-area{display:flex;align-items:center;gap:6px;}
+.import-label{font-size:11px;color:var(--text3);white-space:nowrap;}
+.import-btn{position:relative;overflow:hidden;cursor:pointer;}
+.import-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:220px 1fr;flex:1;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{background:var(--white);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
+.sb-head{padding:10px 14px;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.sb-count{font-family:'JetBrains Mono';color:var(--text);}
+.sb-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);border-left:3px solid transparent;transition:background .12s;position:relative;}
+.sb-item:hover{background:var(--bg);}
+.sb-item.active{background:var(--blue-lt);border-left-color:var(--blue);}
+.si-name{font-size:12px;font-weight:500;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:20px;}
+.si-meta{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+.si-no{font-size:10px;color:var(--text3);font-family:'JetBrains Mono';}
+/* chips */
+.ch{font-size:10px;font-weight:600;border-radius:4px;padding:1px 5px;text-transform:uppercase;}
+.ch-pan{background:var(--amber-lt);color:var(--amber);}
+.ch-dl {background:var(--blue-lt);color:var(--blue);}
+.ch-done{background:var(--green-lt);color:var(--green);}
+.ch-skip{background:var(--bg);color:var(--text3);border:1px solid var(--border);}
+.ch-def{background:var(--red-lt);color:var(--red);}
+.ch-other{background:var(--purple-lt);color:var(--purple);}
+/* status dot */
+.sb-dot{position:absolute;top:11px;right:10px;width:7px;height:7px;border-radius:50%;background:var(--border2);}
+.sb-dot.done{background:var(--green);}
+.sb-dot.skip{background:var(--text3);}
+
+/* MAIN */
+.main{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;}
+
+/* CARD */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);}
+.card-hdr{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.card-hdr h3{font-size:13px;font-weight:600;flex:1;}
+.card-hdr .sub{font-size:11px;color:var(--text3);}
+.card-body{padding:14px 16px;}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* DOC VIEWER */
+.dbox{min-height:220px;background:var(--bg);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+.dbox img{width:100%;max-height:300px;object-fit:contain;cursor:zoom-in;transition:transform .2s;}
+.dbox iframe{width:100%;height:300px;border:none;}
+.dstate{display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px;color:var(--text3);text-align:center;}
+.dstate .ico{font-size:30px;opacity:.35;}
+.dstate .msg{font-size:12px;font-weight:500;}
+.dstate .sub{font-size:11px;color:var(--text3);max-width:180px;line-height:1.5;}
+.spin{width:26px;height:26px;border-radius:50%;border:3px solid var(--border2);border-top-color:var(--blue);animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.zctrl{position:absolute;bottom:7px;right:7px;display:flex;gap:3px;}
+.zbtn{background:rgba(255,255,255,.88);border:1px solid var(--border);border-radius:5px;width:24px;height:24px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--text2);}
+.zbtn:hover{background:var(--white);}
+
+/* MODEL DATA */
+.mf-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.mf-item{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 9px;}
+.mf-lbl{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
+.mf-val{font-family:'JetBrains Mono';font-size:11px;color:var(--text);word-break:break-all;}
+.mf-val.e{color:var(--text3);font-style:italic;}
+.def-warn{background:var(--red-lt);border:1px solid var(--red);border-radius:7px;padding:7px 12px;font-size:12px;color:var(--red);margin-bottom:8px;}
+.rmk-bar{background:var(--amber-lt);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;padding:7px 12px;font-size:11px;color:var(--amber);margin-top:8px;line-height:1.6;}
+
+/* FORM */
+.fg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg.full{grid-column:1/-1;}
+.fg label{font-size:11px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.req{color:var(--red);}
+.hint{font-size:10px;color:var(--blue);cursor:pointer;font-weight:500;}
+.hint:hover{text-decoration:underline;}
+.fi,.fsel{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 11px;font-family:'Inter';font-size:12px;color:var(--text);outline:none;width:100%;transition:border .15s;-webkit-appearance:none;}
+.fsel{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239099b5' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px;}
+.fi:focus,.fsel:focus{border-color:var(--blue);background:var(--white);}
+.fi.pf{border-color:#93c5fd;background:#eff6ff;}
+.fi.er,.fsel.er{border-color:var(--red) !important;}
+/* doc status highlight colours */
+.fsel.ds-clear   {border-color:var(--green);background:var(--green-lt);}
+.fsel.ds-blur,.fsel.ds-tilted,.fsel.ds-bw,.fsel.ds-partial,.fsel.ds-glare,.fsel.ds-damaged{border-color:var(--amber);background:var(--amber-lt);}
+.fsel.ds-wrong_doc{border-color:var(--red);background:var(--red-lt);}
+.fsel.ds-other   {border-color:var(--purple);background:var(--purple-lt);}
+
+/* ACTIONS */
+.act{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+.act .sp{flex:1;}
+.btn{border:none;border-radius:7px;padding:8px 16px;font-family:'Inter';font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-blue  {background:var(--blue);color:#fff;}   .btn-blue:hover:not(:disabled){background:#2d5ee0;}
+.btn-green {background:var(--green);color:#fff;}  .btn-green:hover:not(:disabled){background:#139a61;}
+.btn-out   {background:var(--white);color:var(--text2);border:1px solid var(--border);}  .btn-out:hover:not(:disabled){background:var(--bg);}
+.btn-red   {background:var(--red-lt);color:var(--red);border:1px solid #fca5b0;}  .btn-red:hover:not(:disabled){background:#fbd8dd;}
+.btn-sm    {padding:5px 12px;font-size:12px;}
+.nbtn{width:30px;height:30px;border-radius:7px;background:var(--white);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.nbtn:hover:not(:disabled){background:var(--blue-lt);border-color:var(--blue);color:var(--blue);}
+.nbtn:disabled{opacity:.3;cursor:not-allowed;}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:flex;align-items:center;justify-content:center;animation:fi .18s;}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.modal{background:var(--white);border-radius:14px;width:520px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:su .2s;}
+@keyframes su{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+.mhdr{padding:15px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.mhdr h2{font-size:15px;font-weight:700;}
+.mcl{background:none;border:none;cursor:pointer;font-size:20px;color:var(--text3);line-height:1;}
+.mbody{padding:18px 20px;}
+.mfoot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+
+/* CER MODAL */
+.cer-hero{text-align:center;margin-bottom:16px;}
+.cer-n{font-family:'JetBrains Mono';font-size:52px;font-weight:700;line-height:1;}
+.cer-n.good{color:var(--green);} .cer-n.mid{color:var(--amber);} .cer-n.bad{color:var(--red);}
+.cer-s{font-size:11px;color:var(--text3);margin-top:4px;}
+.ctbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;}
+.ctbl th,.ctbl td{padding:7px 9px;text-align:left;border-bottom:1px solid var(--border);}
+.ctbl th{font-weight:600;color:var(--text3);background:var(--bg);}
+.ctbl td{font-family:'JetBrains Mono';}
+.ctbl tr:last-child td{border-bottom:none;}
+.gc{color:var(--green);} .mc{color:var(--amber);} .rc{color:var(--red);}
+
+/* REPORT MODAL */
+.rpt-m{background:var(--white);border-radius:14px;width:680px;max-width:96vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:su .2s;}
+.rpt-b{padding:22px;}
+.rt{font-size:19px;font-weight:700;margin-bottom:2px;}
+.rsub{font-size:11px;color:var(--text3);margin-bottom:18px;}
+.rs{margin-bottom:20px;}
+.rs h3{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);}
+.mets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.mb{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px 13px;}
+.mbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.mbv{font-size:21px;font-weight:700;font-family:'JetBrains Mono';}
+.mbv.g{color:var(--green);}.mbv.r{color:var(--red);}.mbv.b{color:var(--blue);}.mbv.a{color:var(--amber);}
+.rtbl{width:100%;border-collapse:collapse;font-size:12px;}
+.rtbl th,.rtbl td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);}
+.rtbl th{background:var(--bg);font-weight:600;color:var(--text3);position:sticky;top:0;}
+.rtbl td{font-family:'JetBrains Mono';}
+.rtbl tr:hover td{background:var(--bg);}
+
+/* EMPTY / ONBOARD */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:14px;color:var(--text3);padding:60px;text-align:center;}
+.empty .ico{font-size:44px;opacity:.2;}
+.empty h2{font-size:16px;color:var(--text2);font-weight:600;}
+.empty p{font-size:12px;line-height:1.7;max-width:280px;}
+.empty-actions{display:flex;gap:10px;margin-top:4px;}
+
+/* REPORT PICKER */
+.rpt-pick-btn{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;cursor:pointer;text-align:left;transition:all .15s;width:100%;}
+.rpt-pick-btn:hover{background:var(--blue-lt);border-color:var(--blue);}
+.rpb-icon{font-size:28px;flex-shrink:0;}
+.rpb-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.rpb-sub{font-size:11px;color:var(--text3);line-height:1.5;}
+/* Chart layout helpers in report */
+.ch2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.chart-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;}
+.cc-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;}
+.donut-wrap{display:flex;align-items:center;gap:14px;}
+.donut-wrap canvas{flex-shrink:0;}
+.donut-legend{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text2);}
+.cl-item{display:flex;align-items:center;gap:7px;}
+.cl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+/* Missing field alert */
+.missing-alert{display:flex;align-items:flex-start;gap:10px;background:var(--amber-lt);border:1px solid var(--amber);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--amber);}
+.missing-alert-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+/* Model field item — missing state */
+.mf-item{position:relative;}
+.mf-item.mf-missing{background:#fef9ec;border-color:var(--amber);}
+.mf-badge{font-size:9px;font-weight:700;border-radius:3px;padding:1px 4px;margin-left:4px;vertical-align:middle;}
+.mf-ok{background:var(--green-lt);color:var(--green);}
+.mf-nd{background:var(--amber-lt);color:var(--amber);}
+/* Paste/use button in model field card */
+.mf-paste-btn{position:absolute;bottom:6px;right:6px;background:var(--blue-lt);border:1px solid var(--blue);color:var(--blue);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;font-weight:600;}
+.mf-paste-btn:hover{background:var(--blue);color:#fff;}
+/* OCR button on each field */
+.ocr-btn{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;cursor:pointer;font-size:13px;flex-shrink:0;transition:all .15s;color:var(--text2);}
+.ocr-btn:hover{background:var(--blue-lt);border-color:var(--blue);}
+/* Not detected tag on label */
+.not-det-tag{font-size:10px;font-weight:600;background:var(--amber-lt);color:var(--amber);border-radius:4px;padding:1px 5px;margin-left:4px;}
+/* Reset button */
+.btn-reset{background:var(--red-lt);color:var(--red);border:1px solid #fca5b0;}
+.btn-reset:hover{background:#fbd8dd;}
+
+#toast{position:fixed;bottom:18px;right:18px;z-index:300;background:var(--text);color:#fff;border-radius:8px;padding:9px 15px;font-size:13px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.18);transform:translateY(50px);opacity:0;transition:all .25s;max-width:320px;}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.ok{background:var(--green);} #toast.err{background:var(--red);}
+
+/* MILESTONE BANNER */
+#milestone-banner{
+  position:fixed;top:64px;left:50%;transform:translateX(-50%) translateY(-120px);
+  z-index:250;
+  background:var(--white);border:1px solid var(--border);border-radius:12px;
+  padding:14px 22px;box-shadow:0 8px 32px rgba(0,0,0,.12);
+  display:flex;align-items:center;gap:12px;
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+  white-space:nowrap;
+}
+#milestone-banner.show{transform:translateX(-50%) translateY(0);}
+#milestone-banner .m-icon{font-size:28px;line-height:1;}
+#milestone-banner .m-text{}
+#milestone-banner .m-title{font-size:14px;font-weight:700;color:var(--text);}
+#milestone-banner .m-sub{font-size:11px;color:var(--text3);margin-top:1px;}
+#milestone-banner .m-close{background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);margin-left:8px;line-height:1;padding:0 2px;}
+#milestone-banner .m-bar{position:absolute;bottom:0;left:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:0 0 12px 12px;width:100%;transform-origin:left;animation:m-shrink 4s linear forwards;}
+@keyframes m-shrink{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+
+/* CONFETTI CANVAS */
+#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:249;}
+
+/* RESET CONFIRM MODAL */
+.reset-modal{background:var(--white);border-radius:14px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:su .2s;overflow:hidden;}
+.reset-danger-bar{background:var(--red);padding:16px 22px;display:flex;align-items:center;gap:10px;}
+.reset-danger-bar .rd-icon{font-size:22px;}
+.reset-danger-bar h2{font-size:15px;font-weight:700;color:#fff;}
+.reset-body{padding:18px 22px;}
+.reset-body p{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px;}
+.reset-checklist{background:var(--red-lt);border:1px solid #fca5b0;border-radius:8px;padding:12px 14px;margin-bottom:16px;}
+.reset-checklist li{font-size:12px;color:var(--red);margin-bottom:4px;padding-left:4px;}
+.reset-checklist li:last-child{margin-bottom:0;}
+.reset-confirm-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 11px;font-family:'JetBrains Mono';font-size:12px;color:var(--text);outline:none;transition:border .15s;}
+.reset-confirm-input:focus{border-color:var(--red);}
+.reset-confirm-input::placeholder{color:var(--text3);}
+.reset-input-label{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;display:block;}
+
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="logo">
+    <span class="logo-badge" id="hdr-short">QC</span>
+    <span id="hdr-name">SmartQC Verifier</span>
+  </div>
+  <div class="hdr-spacer"></div>
+
+  <!-- CSV Import -->
+  <div class="import-area">
+    <span class="import-label">Import CSV:</span>
+    <div class="import-btn btn btn-out btn-sm">
+      📂 Choose File
+      <input type="file" accept=".csv" onchange="importCSV(event)">
+    </div>
+  </div>
+
+  <div class="prog-pill" id="prog"><b>0</b> / 0 done</div>
+  <span id="hdr-greeting" style="font-size:12px;color:var(--text2);font-weight:500;"></span>
+  <button class="btn btn-out btn-sm" onclick="showReport()">📊 Report</button>
+  <button class="btn btn-out btn-sm" onclick="exportCSV()">⬇ CSV</button>
+  <button class="btn btn-reset btn-sm" onclick="confirmReset()" title="Reset all progress and data">↺ Reset</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sb-head">
+      <span>Documents</span>
+      <span class="sb-count" id="sb-count">0</span>
+    </div>
+    <div id="sblist"></div>
+  </aside>
+  <main class="main" id="main">
+    <div class="empty">
+      <div class="ico">📂</div>
+      <h2>Import a CSV file to begin</h2>
+      <p>Click <strong>Choose File</strong> in the top bar to load your SmartQC results CSV. All column mappings are defined in <code>smartqc_config.js</code>.</p>
+      <div class="empty-actions">
+        <button class="btn btn-blue btn-sm" onclick="loadDemoData()">▶ Load Demo Data</button>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast"></div>
+
+<!-- Milestone banner (slides down from top) -->
+<div id="milestone-banner">
+  <div class="m-icon" id="m-icon">🎉</div>
+  <div class="m-text">
+    <div class="m-title" id="m-title">Milestone!</div>
+    <div class="m-sub"  id="m-sub">Keep going!</div>
+  </div>
+  <button class="m-close" onclick="hideMilestone()">×</button>
+  <div class="m-bar" id="m-bar"></div>
+</div>
+
+<!-- Confetti canvas -->
+<canvas id="confetti-canvas"></canvas>
+
+<!-- ════════════════════════════════════════════════════════════
+     APP LOGIC  ──  reads SMARTQC_CONFIG for all behaviour
+     ════════════════════════════════════════════════════════════ -->
+<script>
+// ── INLINE FALLBACK CONFIG ───────────────────────────────────────────
+// If smartqc_config.js failed to load (e.g. opened as file://) we use
+// a minimal fallback so the app still works.
+if (typeof SMARTQC_CONFIG === 'undefined') {
+  window.SMARTQC_CONFIG = {
+    api:{ proxyBase:'http://localhost:8080', proxyPath:'/getdocument', refIdParam:'ref_id', timeoutMs:20000 },
+    csv:{ columns:{ refId:'Payload Ref ID', modelResponse:'model_responce', docType:'Doc_type', disResponse:'dis_responce', remarks:'remarks' }, docTypeAliases:{ pan:'pan', PAN:'pan', dl:'dl', DL:'dl' } },
+    docStatusOptions:[
+      {value:'',label:'— Select document status —'},
+      {value:'clear',label:'✅ Clear / Good Quality'},
+      {value:'blur',label:'🌫 Blurred / Out of Focus'},
+      {value:'tilted',label:'↗ Tilted / Rotated'},
+      {value:'bw',label:'🖤 Black & White / Low Contrast'},
+      {value:'wrong_doc',label:'🔄 Wrong Document Submitted'},
+      {value:'partial',label:'✂ Partial / Cropped Document'},
+      {value:'glare',label:'💡 Glare / Reflection'},
+      {value:'damaged',label:'🔥 Damaged / Torn Document'},
+      {value:'other',label:'… Other (see remarks)'},
+    ],
+    docTypes:{
+      pan:{ label:'PAN Card', color:'amber', fields:[
+        {k:'name',l:'Name',ph:'e.g. RAJESH KUMAR',modelKey:['name']},
+        {k:'pan_no',l:'PAN Number',ph:'e.g. ABCDE1234F',modelKey:['id number','pan']},
+        {k:'father',l:"Father's Name",ph:'e.g. RAM KUMAR',modelKey:['father','swid','guardian']},
+        {k:'dob',l:'Date of Birth',ph:'DD-MM-YYYY',modelKey:['dob','dateofbirth','birth']},
+      ]},
+      dl:{ label:'Driving Licence', color:'blue', fields:[
+        {k:'name',l:'Name',ph:'e.g. RAJESH KUMAR',modelKey:['name']},
+        {k:'dl_no',l:'DL Number',ph:'e.g. DL-0420110149646',modelKey:['id number','dl']},
+        {k:'father',l:"Father's Name",ph:'e.g. SH PARKASH',modelKey:['father','swid','guardian']},
+        {k:'dob',l:'Date of Birth',ph:'DD-MM-YYYY',modelKey:['dob','dateofbirth','birth']},
+        {k:'expiry',l:'Date of Expiry',ph:'DD-MM-YYYY',modelKey:['expiry','valid till (non','validtillnon']},
+        {k:'validity',l:'Date of Validity',ph:'DD-MM-YYYY',modelKey:['dateofissue','date of issue']},
+        {k:'address',l:'Address',ph:'Full address on document',modelKey:['address'],full:true},
+      ]},
+    },
+    exportColumns:[
+      {key:'ref_id',header:'ref_id'},{key:'doc_type',header:'doc_type'},
+      {key:'status',header:'verification_status'},{key:'doc_status',header:'document_status'},
+      {key:'name',header:'name'},{key:'pan_no',header:'pan_number'},
+      {key:'dl_no',header:'dl_number'},{key:'father',header:'father_name'},
+      {key:'dob',header:'date_of_birth'},{key:'expiry',header:'date_of_expiry'},
+      {key:'validity',header:'date_of_validity'},{key:'address',header:'address'},
+      {key:'avg_cer_pct',header:'avg_cer_pct'},{key:'timestamp',header:'verified_at'},
+    ],
+    session:{ storageKey:'smartqc_session_v4' },
+    ui:{ appName:'SmartQC Verifier', appShortName:'QC', loadBtnText:'⬇ Load', autofillBtnText:'⚡ Autofill', submitBtnText:'✓ Submit', skipBtnText:'Skip', exportBtnText:'⬇ CSV', reportBtnText:'📊 Report', docStatusLabel:'Document Status' },
+  };
+}
+
+// ── ALIASES ───────────────────────────────────────────────────────────
+const CFG  = SMARTQC_CONFIG;
+const COLS = CFG.csv.columns;
+const DTAL = CFG.csv.docTypeAliases;
+
+// ── STATE ─────────────────────────────────────────────────────────────
+let ROWS     = [];   // parsed CSV rows (normalised)
+let V        = {};   // verified[ref_id] = {fields, cer_fields, avg_cer, doc_status, skipped, ts}
+let curIdx   = null;
+let docScale = 1;
+let USERNAME = '';   // set at welcome screen, persisted in session
+
+// ── INIT UI LABELS ────────────────────────────────────────────────────
+document.getElementById('hdr-name').textContent  = CFG.ui.appName;
+document.getElementById('hdr-short').textContent = CFG.ui.appShortName;
+document.querySelector('[onclick="showReport()"]').textContent = CFG.ui.reportBtnText;
+document.querySelector('[onclick="exportCSV()"]').textContent  = CFG.ui.exportBtnText;
+
+// ── SESSION ───────────────────────────────────────────────────────────
+function saveSession() { try { localStorage.setItem(CFG.session.storageKey, JSON.stringify({ rows: ROWS, verified: V, username: USERNAME })); } catch(e){} }
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(CFG.session.storageKey);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (s.rows && s.rows.length) { ROWS = s.rows; V = s.verified || {}; USERNAME = s.username || ''; return true; }
+  } catch(e) {}
+  return false;
+}
+
+// ── CSV PARSER ────────────────────────────────────────────────────────
+// Generic RFC-4180 CSV parser — returns array of objects keyed by header.
+function parseCSV(text) {
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  if (!lines.length) return [];
+  const headers = splitCSVRow(lines[0]);
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const vals = splitCSVRow(line);
+    const obj = {};
+    headers.forEach((h, j) => { obj[h.trim()] = (vals[j] || '').trim(); });
+    rows.push(obj);
+  }
+  return rows;
+}
+function splitCSVRow(line) {
+  const cells = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === ',' && !inQ) { cells.push(cur); cur = ''; }
+    else cur += c;
+  }
+  cells.push(cur);
+  return cells;
+}
+
+// Map a raw CSV row → normalised ROWS entry using COLS config
+function normaliseRow(raw) {
+  const get = (col) => {
+    // Try exact match first, then case-insensitive
+    if (raw[col] !== undefined) return (raw[col]||'').trim();
+    const lc = col.toLowerCase();
+    for (const [k,v] of Object.entries(raw)) { if (k.toLowerCase() === lc) return (v||'').trim(); }
+    return '';
+  };
+  const rawType = get(COLS.docType);
+  const normType = DTAL[rawType] || DTAL[rawType.trim()] || rawType.toLowerCase().trim();
+  return {
+    ref_id:    get(COLS.refId),
+    model_res: get(COLS.modelResponse),
+    doc_type:  normType,
+    dis_res:   get(COLS.disResponse),
+    remarks:   get(COLS.remarks),
+  };
+}
+
+// ── USERNAME MODAL ────────────────────────────────────────────────────
+function showUsernameModal(onConfirm) {
+  if (document.getElementById('unameOv')) return;
+  const ov = document.createElement('div'); ov.className='ov'; ov.id='unameOv';
+  ov.innerHTML = `<div class="modal" style="width:400px;">
+    <div class="mhdr" style="background:linear-gradient(135deg,var(--blue),#6d50f8);border-radius:14px 14px 0 0;">
+      <div>
+        <h2 style="color:#fff;font-size:16px;">👋 Welcome to SmartQC!</h2>
+        <div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:2px;">Let us know who you are before we start</div>
+      </div>
+    </div>
+    <div class="mbody">
+      <div style="text-align:center;margin-bottom:18px;">
+        <div style="font-size:40px;margin-bottom:6px;">🧑‍💼</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6;">Your name will appear in reports and<br>personalise your experience.</div>
+      </div>
+      <div class="fg">
+        <label style="font-size:11px;font-weight:600;color:var(--text2);">Your Name <span class="req">*</span></label>
+        <input class="fi" id="uname-input" type="text" placeholder="e.g. Priya Sharma"
+          style="font-size:14px;padding:10px 14px;"
+          onkeydown="if(event.key==='Enter')submitUsername()"
+          oninput="var v=this.value.trim();var b=document.getElementById('uname-ok');b.disabled=!v;b.style.opacity=v?'1':'.4';">
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-blue" id="uname-ok" disabled style="width:100%;justify-content:center;opacity:.4;" onclick="submitUsername()">
+        Let's Get Started →
+      </button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  // Store callback
+  window._unameCallback = onConfirm;
+  setTimeout(() => document.getElementById('uname-input')?.focus(), 120);
+}
+
+function submitUsername() {
+  const v = document.getElementById('uname-input')?.value.trim();
+  if (!v) return;
+  USERNAME = v;
+  saveSession();
+  // Update header greeting
+  updateHeaderGreeting();
+  cModal('unameOv');
+  if (typeof window._unameCallback === 'function') { window._unameCallback(); window._unameCallback = null; }
+}
+
+function updateHeaderGreeting() {
+  const el = document.getElementById('hdr-greeting');
+  if (el) el.textContent = USERNAME ? `Hi, ${USERNAME.split(' ')[0]} 👋` : '';
+}
+
+// ── CSV IMPORT ────────────────────────────────────────────────────────
+function importCSV(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  evt.target.value = '';
+
+  const doLoad = () => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const rawRows = parseCSV(e.target.result);
+        if (!rawRows.length) { toast('CSV is empty or unreadable', 'err'); return; }
+        const firstKey = Object.keys(rawRows[0]);
+        const refColFound = firstKey.some(k => k.trim() === COLS.refId || k.trim().toLowerCase() === COLS.refId.toLowerCase());
+        if (!refColFound) {
+          toast(`Column "${COLS.refId}" not found. Check smartqc_config.js → csv.columns`, 'err');
+          return;
+        }
+        ROWS = rawRows.map(normaliseRow).filter(r => r.ref_id);
+        V    = {};
+        saveSession();
+        buildSB(); updateProg();
+        if (ROWS.length) sel(0);
+        toast(`✓ Loaded ${ROWS.length} records from ${file.name}`, 'ok');
+      } catch(ex) {
+        toast('Failed to parse CSV: ' + ex.message, 'err');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  if (!USERNAME) {
+    showUsernameModal(doLoad);
+  } else {
+    doLoad();
+  }
+}
+
+// ── DEMO DATA ─────────────────────────────────────────────────────────
+const DEMO_ROWS = [{"ref_id":"1d190582-8f3e-4d76-913a-70aba3a6cca1","model_res":"[ { \"extracted_pairs\": { \"mandatory_fields\": { \"ID Number\": \"AS25 20170019891\", \"Name\": \"RAJIB SAIKIA\", \"DateOfBirth\": \"11-05-1999\", \"IssuerAuthority\": \"P.B. Das\", \"DateOfIssue\": \"21-11-2017\" }, \"optional_fields\": { \"Address\": \"C/O BAPUKAN BORO, Kamrup, AS 781030\", \"SWID\": \"PRABHAT CH SAIKIA\", \"Valid till (Non Transport)\": \"20-11-2037\" } }, \"is_default_responce\": false }]","doc_type":"pan","dis_res":"422 UNPROCESSABLE_ENTITY","remarks":"DOB scratch on document"},{"ref_id":"49c74716-9656-4694-890a-1ff98cd742e4","model_res":"[ { \"extracted_pairs\": { \"mandatory_fields\": { \"Name\": \"VARUN VERMA\", \"DateOfBirth\": \"15-06-1986\", \"ID Number\": \"DL-092009033725\", \"IssuerAuthority\": \"Transport Department Government of Delhi\" }, \"optional_fields\": { \"Father's Name\": \"SH PARKASH\", \"Validity\": \"02-07-2029\", \"Date of Issue\": \"03-07-2009\" } }, \"is_default_responce\": true }]","doc_type":"pan","dis_res":"422 UNPROCESSABLE_ENTITY","remarks":"Fully tilted. DL number incorrect"},{"ref_id":"c10a0de4-5553-4051-9cbc-bdfd101689e2","model_res":"[ { \"extracted_pairs\": { \"mandatory_fields\": { \"ID Number\": \"MP17R-2020-0218132\", \"Name\": \"JAI LAL YADAV\", \"DateOfBirth\": \"10-11-1982\", \"IssuerAuthority\": \"MADHYA PRADESH\", \"DateOfIssue\": \"14-09-2020\" }, \"optional_fields\": { \"Address\": \"VPO-RAMNAI REWA, MP 486001\" } }, \"is_default_responce\": false }]","doc_type":"pan","dis_res":"422 UNPROCESSABLE_ENTITY","remarks":"DL number contains '-'"},{"ref_id":"d6b613ad-f40f-441d-b5f8-6a6e5cbc0a78","model_res":"[ { \"extracted_pairs\": { \"mandatory_fields\": { \"ID Number\": \"AS-1120150029753\", \"Name\": \"KABAL HUSSAIN MAZARBHUIYA\", \"DateOfBirth\": \"11-03-2015\", \"IssuerAuthority\": \"GOVERNMENT OF ASSAM\", \"DateOfIssue\": \"10-03-1991\" }, \"optional_fields\": { \"Address\": \"VILL-RAMNAGAR, ASSAM 788003\" } }, \"is_default_responce\": false }]","doc_type":"dl","dis_res":"422 UNPROCESSABLE_ENTITY","remarks":"Legacy format - name incorrect"},{"ref_id":"9c6a9162-a7ef-4334-bf0d-9e0470231322","model_res":"[ { \"extracted_pairs\": { \"mandatory_fields\": { \"ID Number\": \"6729173\", \"Name\": \"VISHAKH VIJAYAN\", \"DateOfBirth\": \"08-08-1993\", \"IssuerAuthority\": \"KERALA STATE DRIVING LICENCE\", \"DateOfIssue\": \"22-09-2015\" }, \"optional_fields\": { \"Address\": \"MOOZHICKAL HOUSE, IDUKKI 685602\", \"Blood Group\": \"O+\" } }, \"is_default_responce\": false }]","doc_type":"dl","dis_res":"422 UNPROCESSABLE_ENTITY","remarks":"Tilted. DL number incorrect"},{"ref_id":"23e860fa-a0dc-46ac-b415-0b324723b316","model_res":"[ { \"extracted_pairs\": { \"mandatory_fields\": { \"ID Number\": \"MH03 19990013126\", \"Name\": \"MALATHI RAJARAM\", \"DateOfBirth\": \"12-04-1999\", \"IssuerAuthority\": \"Maharashtra State Motor Vehicles Department\", \"DateOfIssue\": \"12-04-1999\" }, \"optional_fields\": { \"Address\": \"B-1 KAMALAYA, CHEMBUR, MUMBAI\" } }, \"is_default_responce\": false }]","doc_type":"dl","dis_res":"422 UNPROCESSABLE_ENTITY","remarks":"DOB scratch"}];
+
+function loadDemoData() {
+  ROWS = DEMO_ROWS;
+  V = {};
+  buildSB(); updateProg();
+  if (ROWS.length) sel(0);
+  toast(`▶ Demo data loaded — ${ROWS.length} records`, 'ok');
+}
+
+// ── MODEL RESPONSE PARSING ────────────────────────────────────────────
+function pMR(raw) {
+  try { const a = JSON.parse(raw); if (a&&a[0]&&a[0].extracted_pairs) return a[0]; } catch(e) {}
+  return null;
+}
+
+// Flatten ALL model fields (mandatory + optional combined) — the model
+// sometimes misplaces fields into the wrong bucket, so we always search both.
+function allModelFields(p) {
+  if (!p) return {};
+  return {
+    ...(p.extracted_pairs.mandatory_fields||{}),
+    ...(p.extracted_pairs.optional_fields||{})
+  };
+}
+
+// Config-driven autofill — searches combined mandatory+optional pool
+function modelSuggest(p, fieldCfg) {
+  if (!p || !fieldCfg.modelKey) return '';
+  const all = allModelFields(p);
+  for (const searchKey of fieldCfg.modelKey) {
+    const sk = searchKey.toLowerCase().replace(/[\s_\-.]/g,'');
+    for (const [fk, fv] of Object.entries(all)) {
+      if (typeof fv !== 'string' || !fv.trim()) continue;
+      const fkn = fk.toLowerCase().replace(/[\s_\-.]/g,'');
+      // exact prefix / contains match
+      if (fkn.includes(sk) || sk.includes(fkn)) return fv.trim();
+    }
+  }
+  return '';
+}
+
+// Detect which configured mandatory fields were NOT found anywhere in the model response
+function detectMissingFields(p, dtCfg) {
+  if (!p || !dtCfg) return [];
+  const missing = [];
+  dtCfg.fields.forEach(f => {
+    const found = modelSuggest(p, f);
+    if (!found) missing.push(f);
+  });
+  return missing;
+}
+
+function gName(p) {
+  if (!p) return '—';
+  const all = allModelFields(p);
+  for (const [k,v] of Object.entries(all)) {
+    if (k.toLowerCase().replace(/[\s_]/g,'').includes('name') && typeof v==='string' && v.trim()) return v.trim();
+  }
+  return '—';
+}
+function sid(id) { return id ? id.substring(0,8)+'…' : ''; }
+
+// ── CER ───────────────────────────────────────────────────────────────
+function cer(ref, hyp) {
+  if (!ref && !hyp) return 0; if (!ref) return 1;
+  ref = ref.toUpperCase().trim(); hyp = (hyp||'').toUpperCase().trim();
+  if (ref === hyp) return 0;
+  const m = ref.length, n = hyp.length;
+  const d = Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i?j?0:i:j));
+  for (let i=1;i<=m;i++) for (let j=1;j<=n;j++)
+    d[i][j] = ref[i-1]===hyp[j-1] ? d[i-1][j-1] : 1+Math.min(d[i-1][j-1],d[i-1][j],d[i][j-1]);
+  return d[m][n] / Math.max(m,n);
+}
+function cCls(v) { return v<=.1?'gc':v<=.35?'mc':'rc'; }
+function cClass(v){ return v<=.1?'good':v<=.35?'mid':'bad'; }
+
+// ── SIDEBAR ───────────────────────────────────────────────────────────
+function buildSB() {
+  document.getElementById('sb-count').textContent = ROWS.length;
+  if (!ROWS.length) {
+    document.getElementById('sblist').innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text3);text-align:center;">No records loaded</div>';
+    return;
+  }
+  document.getElementById('sblist').innerHTML = ROWS.map((r,i) => {
+    const p  = pMR(r.model_res);
+    const dt = r.doc_type;
+    const vd = V[r.ref_id];
+    const dtCfg = CFG.docTypes[dt];
+    const chipCls = dtCfg ? `ch-${dtCfg.color==='amber'?'pan':'dl'}` : 'ch-other';
+    return `<div class="sb-item${curIdx===i?' active':''}" onclick="sel(${i})">
+      <div class="si-name">${gName(p)}</div>
+      <div class="si-meta">
+        <span class="si-no">#${i+1}</span>
+        <span class="ch ${chipCls}">${(dtCfg?dtCfg.label:dt).toUpperCase().substring(0,3)}</span>
+        ${p&&p.is_default_responce?'<span class="ch ch-def">DEF</span>':''}
+        ${vd?`<span class="ch ${vd.skipped?'ch-skip':'ch-done'}">${vd.skipped?'Skip':'✓'}</span>`:''}
+      </div>
+      <div class="sb-dot${vd?vd.skipped?' skip':' done':''}"></div>
+    </div>`;
+  }).join('');
+}
+
+function updateProg() {
+  const done = Object.keys(V).length;
+  document.getElementById('prog').innerHTML = `<b>${done}</b> / ${ROWS.length} done`;
+}
+
+// ── SELECT + RENDER ───────────────────────────────────────────────────
+function sel(idx) { curIdx = idx; buildSB(); render(idx); }
+
+function render(idx) {
+  if (!ROWS.length) return;
+  const row   = ROWS[idx];
+  const p     = pMR(row.model_res);
+  const dt    = row.doc_type;
+  const dtCfg = CFG.docTypes[dt];
+  const fields= dtCfg ? dtCfg.fields : [];
+  const isdef = p && p.is_default_responce;
+  const vd    = V[row.ref_id] || {};
+
+  // ── Detect missing mandatory fields ──────────────────────────────────
+  const missingFields = detectMissingFields(p, dtCfg);
+  const hasMissing    = missingFields.length > 0;
+
+  // Build doc-status dropdown options (from config)
+  const dsOptions = CFG.docStatusOptions.map(o =>
+    `<option value="${o.value}" ${vd.doc_status===o.value?'selected':''}>${o.label}</option>`
+  ).join('');
+
+  // ── Model extracted panel — combined view with missing-field alert ───
+  let modelPanelHTML = '';
+  if (!p) {
+    modelPanelHTML = '<div style="color:var(--red);font-size:12px;padding:4px 0;">No model response data available.</div>';
+  } else {
+    const all = allModelFields(p);
+    // Separate found vs missing vs optional-only fields
+    const mandatoryEntries = Object.entries(p.extracted_pairs.mandatory_fields||{});
+    const optionalEntries  = Object.entries(p.extracted_pairs.optional_fields||{});
+    // Build configured-field rows (shows detected/undetected side by side)
+    const fieldRows = dtCfg ? dtCfg.fields.map(f => {
+      const v = modelSuggest(p, f);
+      const detected = !!v;
+      return `<div class="mf-item${detected?'':' mf-missing'}" title="${detected?'Detected':'Not detected by model'}">
+        <div class="mf-lbl">
+          ${f.l}
+          ${detected
+            ? '<span class="mf-badge mf-ok">✓</span>'
+            : '<span class="mf-badge mf-nd">Not detected</span>'}
+        </div>
+        <div class="mf-val${detected?'':' e'}">${detected?v:'—'}</div>
+        ${detected?`<button class="mf-paste-btn" onclick="fill('${f.k}','${v.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" title="Paste into form">↙ use</button>`:''}
+      </div>`;
+    }).join('') : mandatoryEntries.map(([k,v])=>`<div class="mf-item">
+      <div class="mf-lbl">${k}</div>
+      <div class="mf-val${v?'':' e'}">${v||'—'}</div>
+    </div>`).join('');
+
+    modelPanelHTML = `
+      ${isdef?'<div class="def-warn">⚠ Model returned default fallback — verify carefully</div>':''}
+      ${hasMissing?`<div class="missing-alert">
+        <div class="missing-alert-icon">⚠</div>
+        <div>
+          <div style="font-weight:600;margin-bottom:2px;">Model failed to detect ${missingFields.length} field${missingFields.length>1?'s':''}</div>
+          <div style="font-size:11px;">${missingFields.map(f=>`<span class="missing-chip">${f.l}</span>`).join('')}</div>
+        </div>
+      </div>`:''}
+      <div class="mf-grid">${fieldRows}</div>
+      ${optionalEntries.length?`<details style="margin-top:10px;">
+        <summary style="font-size:11px;color:var(--text3);cursor:pointer;user-select:none;">All model fields (${mandatoryEntries.length+optionalEntries.length} total)</summary>
+        <div class="mf-grid" style="margin-top:8px;opacity:.8;">
+          ${[...mandatoryEntries,...optionalEntries].map(([k,v])=>`<div class="mf-item">
+            <div class="mf-lbl">${k}</div>
+            <div class="mf-val${v?'':' e'}">${typeof v==='object'?JSON.stringify(v):(v||'—')}</div>
+          </div>`).join('')}
+        </div>
+      </details>`:''  }
+      ${row.remarks&&row.remarks!=='nan'?`<div class="rmk-bar">⚠ ${row.remarks.replace(/\n/g,'<br>')}</div>`:''}`;
+  }
+
+  // Build manual entry fields — with OCR button and detection status
+  const formFields = fields.map(f => {
+    const s   = modelSuggest(p, f);
+    const sv  = vd.fields ? (vd.fields[f.k]||'') : '';
+    const isMissing = hasMissing && missingFields.some(mf=>mf.k===f.k);
+    return `<div class="fg${f.full?' full':''}">
+      <label>
+        ${f.l}<span class="req">*</span>
+        ${s ? `<span class="hint" onclick="fill('${f.k}','${s.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">← ${s.substring(0,18)}${s.length>18?'…':''}</span>` : ''}
+        ${isMissing ? '<span class="not-det-tag">Not detected</span>' : ''}
+      </label>
+      <div style="display:flex;gap:5px;align-items:center;">
+        <input class="fi${s?' pf':''}" id="f-${f.k}" type="text"
+          placeholder="${f.ph}" value="${sv.replace(/"/g,'&quot;')}"
+          style="${isMissing&&!sv?'border-color:var(--amber);background:var(--amber-lt);':''}">
+        <button class="ocr-btn" onclick="ocrPaste('${f.k}')" title="Extract from document image using AI OCR">🔍</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('main').innerHTML = `
+    <div class="two-col">
+      <!-- DOC VIEWER -->
+      <div class="card">
+        <div class="card-hdr"><h3>Document</h3><span class="sub">${sid(row.ref_id)}</span></div>
+        <div class="card-body" style="padding:10px;">
+          <div class="dbox" id="dbox">
+            <div class="dstate"><div class="ico">📄</div><div class="msg">Not loaded</div><div class="sub">Click Load to fetch from API</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+            <button class="btn btn-blue btn-sm" id="lbtn" onclick="loadDoc('${row.ref_id}')">${CFG.ui.loadBtnText}</button>
+            <button class="btn btn-out btn-sm" id="ocr-all-btn" onclick="ocrAll()" title="Run AI OCR on loaded image — extract all fields at once" style="display:none;">🔍 OCR All Fields</button>
+            <span id="lstatus" style="font-size:11px;color:var(--text3);"></span>
+          </div>
+          <div id="ocr-panel" style="display:none;margin-top:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:160px;overflow-y:auto;font-size:11px;"></div>
+        </div>
+      </div>
+
+      <!-- MODEL DATA -->
+      <div class="card">
+        <div class="card-hdr">
+          <h3>Model Extracted</h3>
+          ${hasMissing?`<span class="ch" style="background:var(--amber-lt);color:var(--amber);">⚠ ${missingFields.length} missing</span>`:''}
+          ${isdef?'<span class="ch ch-def">DEF</span>':''}
+        </div>
+        <div class="card-body">${modelPanelHTML}</div>
+      </div>
+    </div>
+
+    <!-- MANUAL FORM -->
+    <div class="card">
+      <div class="card-hdr">
+        <h3>Manual Verification</h3>
+        <span class="sub">${dtCfg?dtCfg.label:dt.toUpperCase()}</span>
+        ${hasMissing?`<span style="font-size:11px;color:var(--amber);">⚠ ${missingFields.length} field${missingFields.length>1?'s':''} need manual entry</span>`:''}
+      </div>
+      <div class="card-body">
+        <div class="fg full" style="margin-bottom:12px;">
+          <label>${CFG.ui.docStatusLabel} <span class="req">*</span></label>
+          <select class="fsel" id="f-doc_status" onchange="updateDocStatusStyle(this)">${dsOptions}</select>
+        </div>
+        <div style="height:1px;background:var(--border);margin-bottom:12px;"></div>
+        ${!dtCfg?`<div style="color:var(--amber);font-size:12px;padding:8px 0;">⚠ Doc type "<b>${dt}</b>" not defined in config.</div>`:''}
+        <div class="fg-grid">${formFields}</div>
+        <div class="act">
+          <button class="btn btn-out btn-sm" onclick="aFill()" ${!p?'disabled':''}>${CFG.ui.autofillBtnText}</button>
+          <button class="btn btn-out btn-sm" onclick="clrF()">✕ Clear</button>
+          <div class="sp"></div>
+          <button class="nbtn" onclick="nav(-1)" ${idx===0?'disabled':''}>‹</button>
+          <button class="nbtn" onclick="nav(1)"  ${idx===ROWS.length-1?'disabled':''}>›</button>
+          <button class="btn btn-red btn-sm" onclick="skipDoc(${idx})">${CFG.ui.skipBtnText}</button>
+          <button class="btn btn-green"      onclick="submit(${idx})">${CFG.ui.submitBtnText}</button>
+        </div>
+      </div>
+    </div>`;
+
+  // Apply colour to select if already has a saved value
+  const dsel = document.getElementById('f-doc_status');
+  if (dsel) updateDocStatusStyle(dsel);
+}
+
+// ── DOC STATUS SELECT COLOUR ──────────────────────────────────────────
+function updateDocStatusStyle(sel) {
+  sel.className = 'fsel' + (sel.value ? ` ds-${sel.value}` : '') + (sel.classList.contains('er') ? ' er' : '');
+}
+
+// ── DOC LOADER (b64 aware) ────────────────────────────────────────────
+async function loadDoc(refId) {
+  const btn  = document.getElementById('lbtn');
+  const stat = document.getElementById('lstatus');
+  const box  = document.getElementById('dbox');
+  btn.disabled = true; btn.textContent = '…';
+  stat.textContent = 'Fetching…'; stat.style.color = 'var(--text3)';
+  box.innerHTML = '<div class="dstate"><div class="spin"></div><div class="msg">Loading from API…</div></div>';
+
+  const url = `${CFG.api.proxyBase}${CFG.api.proxyPath}?${CFG.api.refIdParam}=${encodeURIComponent(refId)}`;
+  try {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), CFG.api.timeoutMs);
+    const res  = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('json') || ct.includes('text')) {
+      const txt = await res.text();
+      let obj = null;
+      try { obj = JSON.parse(txt); } catch(e) {}
+      if (obj) {
+        const b64  = obj.data || obj.b64 || obj.base64_data || obj.image || obj.document || obj.content || obj.file || null;
+        const mime = obj.content_type || obj.mime_type || obj.type || obj.media_type || '';
+        if (b64) { renderB64(b64, mime, box); }
+        else {
+          const t = txt.trim();
+          if (isB64(t)) renderB64(t, '', box);
+          else box.innerHTML = `<div class="dstate"><div class="ico">📋</div><div class="msg">Unexpected response</div><div class="sub" style="font-size:10px;">${txt.substring(0,120)}</div></div>`;
+        }
+      } else {
+        const t = txt.trim();
+        if (isB64(t)) renderB64(t, '', box);
+        else box.innerHTML = '<div class="dstate"><div class="ico">📄</div><div class="msg">Response not displayable</div></div>';
+      }
+    } else {
+      const blob = await res.blob();
+      const burl = URL.createObjectURL(blob);
+      if (ct.includes('pdf')) box.innerHTML = `<iframe src="${burl}" style="width:100%;height:300px;border:none;"></iframe>`;
+      else showImg(burl, box);
+    }
+    stat.textContent = '✓ Loaded'; stat.style.color = 'var(--green)';
+  } catch(e) {
+    let msg = e.message;
+    if (e.name === 'AbortError') msg = `Timeout (${CFG.api.timeoutMs/1000}s)`;
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError'))
+      msg = 'Cannot reach proxy. Run: python3 proxy_server.py';
+    box.innerHTML = `<div class="dstate"><div class="ico" style="opacity:.5">⚠️</div><div class="msg" style="color:var(--red)">Load failed</div><div class="sub">${msg}</div></div>`;
+    stat.textContent = '✗ Error'; stat.style.color = 'var(--red)';
+  }
+  btn.disabled = false; btn.textContent = CFG.ui.loadBtnText;
+}
+
+function isB64(s) {
+  if (!s || s.length < 20) return false;
+  return /^[A-Za-z0-9+/\r\n]+=*$/.test(s.replace(/\s/g,''));
+}
+function detMime(b64) {
+  try {
+    const bin = atob(b64.replace(/\s/g,'').substring(0,16));
+    const b = [...bin].map(c => c.charCodeAt(0));
+    if (b[0]===0xFF&&b[1]===0xD8) return 'image/jpeg';
+    if (b[0]===0x89&&b[1]===0x50&&b[2]===0x4E&&b[3]===0x47) return 'image/png';
+    if (b[0]===0x25&&b[1]===0x50&&b[2]===0x44&&b[3]===0x46) return 'application/pdf';
+    if (b[0]===0x47&&b[1]===0x49&&b[2]===0x46) return 'image/gif';
+    if (b[0]===0x42&&b[1]===0x4D) return 'image/bmp';
+  } catch(e) {} return '';
+}
+function renderB64(b64, hint, box) {
+  const clean = b64.replace(/\s/g,'');
+  const mime  = hint || detMime(clean);
+  if (mime.includes('pdf')) {
+    box.innerHTML = `<iframe src="data:application/pdf;base64,${clean}" style="width:100%;height:300px;border:none;"></iframe>`;
+  } else {
+    const tryMime = mime.startsWith('image/') ? mime : 'image/jpeg';
+    showImg(`data:${tryMime};base64,${clean}`, box);
+  }
+}
+function showImg(url, box) {
+  docScale = 1;
+  _currentImgUrl = url;  // store for OCR
+  box.innerHTML = `<img id="dimg" src="${url}" style="width:100%;max-height:300px;object-fit:contain;cursor:zoom-in;transition:transform .2s;transform-origin:top left;"
+    ondblclick="tzoom()"
+    onerror="this.parentElement.innerHTML='<div class=dstate><div class=ico>🖼️</div><div class=msg style=color:var(--red)>Image failed to display</div></div>'">
+    <div class="zctrl">
+      <button class="zbtn" onclick="zm(1.25)" title="Zoom in">+</button>
+      <button class="zbtn" onclick="zm(0.8)"  title="Zoom out">−</button>
+      <button class="zbtn" onclick="zm(0)"    title="Reset">⊡</button>
+    </div>`;
+  // Show OCR button
+  const ocrBtn = document.getElementById('ocr-all-btn');
+  if (ocrBtn) ocrBtn.style.display = '';
+}
+let _currentImgUrl = null;
+
+function zm(f) { const img = document.getElementById('dimg'); if(!img) return; docScale = f===0?1:Math.min(4,Math.max(.4,docScale*f)); img.style.maxHeight='none'; img.style.transform=`scale(${docScale})`; }
+function tzoom() { zm(docScale===1?2:0); }
+
+// ── OCR — Claude Vision extracts text from loaded document image ───────
+// ocrPaste(fieldKey) — run OCR focused on a single field
+async function ocrPaste(fieldKey) {
+  if (!_currentImgUrl) { toast('Load the document image first', 'err'); return; }
+  const btn = document.querySelector(`.ocr-btn[onclick="ocrPaste('${fieldKey}')"]`);
+  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  try {
+    const b64 = _currentImgUrl.split(',')[1];
+    const mime = _currentImgUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+    const row = ROWS[curIdx]; const dt = row?.doc_type||'';
+    const dtCfg = CFG.docTypes[dt];
+    const fieldLabel = dtCfg?.fields.find(f=>f.k===fieldKey)?.l || fieldKey;
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:200,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:mime,data:b64}},
+          {type:'text',text:`This is a ${dt.toUpperCase()} document. Extract ONLY the value of the field "${fieldLabel}" exactly as printed. Return just the raw value with no explanation, no quotes, no label. If not found, return empty string.`}
+        ]}]
+      })
+    });
+    const data = await resp.json();
+    const txt = (data.content?.[0]?.text||'').trim();
+    if (txt) {
+      fill(fieldKey, txt);
+      toast(`🔍 OCR → "${txt}"`, 'ok');
+    } else {
+      toast(`Could not extract "${fieldLabel}" from image`, '');
+    }
+  } catch(e) {
+    toast('OCR failed: ' + e.message, 'err');
+  }
+  if (btn) { btn.textContent = '🔍'; btn.disabled = false; }
+}
+
+// ocrAll() — extract ALL configured fields from the document in one API call
+async function ocrAll() {
+  if (!_currentImgUrl) { toast('Load the document image first', 'err'); return; }
+  const ocrBtn = document.getElementById('ocr-all-btn');
+  if (ocrBtn) { ocrBtn.textContent = '⏳ Extracting…'; ocrBtn.disabled = true; }
+  const panel = document.getElementById('ocr-panel');
+  if (panel) { panel.style.display=''; panel.innerHTML='<span style="color:var(--text3);">Running OCR…</span>'; }
+  try {
+    const b64  = _currentImgUrl.split(',')[1];
+    const mime = _currentImgUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+    const row  = ROWS[curIdx]; const dt = row?.doc_type||'';
+    const dtCfg= CFG.docTypes[dt];
+    const fieldList = dtCfg?.fields.map(f=>`"${f.l}" (key: ${f.k})`).join(', ') || 'Name, ID Number, DOB';
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:500,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:mime,data:b64}},
+          {type:'text',text:`This is a ${dt.toUpperCase()} identity document. Extract these fields exactly as printed: ${fieldList}.
+Return ONLY a JSON object with keys matching exactly the key names in brackets above. If a field is not visible, use null.
+Example: {"name":"RAJESH KUMAR","pan_no":"ABCDE1234F","father":"RAM KUMAR","dob":"01-01-1980"}
+Return only the JSON, no markdown, no explanation.`}
+        ]}]
+      })
+    });
+    const data = await resp.json();
+    let txt = (data.content?.[0]?.text||'').trim();
+    // Strip markdown fences if present
+    txt = txt.replace(/^```[a-z]*\n?/,'').replace(/```$/,'').trim();
+    let extracted = {};
+    try { extracted = JSON.parse(txt); } catch(e) { throw new Error('Could not parse OCR response'); }
+
+    const filled = [];
+    if (dtCfg) {
+      dtCfg.fields.forEach(f => {
+        const v = extracted[f.k];
+        if (v && typeof v === 'string' && v.trim()) {
+          fill(f.k, v.trim());
+          filled.push(`${f.l}: <b>${v.trim()}</b>`);
+        }
+      });
+    }
+    if (panel) {
+      panel.innerHTML = filled.length
+        ? `<div style="font-weight:600;color:var(--green);margin-bottom:5px;">🔍 OCR extracted ${filled.length} field${filled.length!==1?'s':''}:</div>` + filled.map(s=>`<div style="margin-bottom:3px;">${s}</div>`).join('')
+        : '<span style="color:var(--amber);">No fields could be extracted from this image.</span>';
+    }
+    if (filled.length) toast(`🔍 OCR filled ${filled.length} fields`, 'ok');
+    else toast('OCR: no fields extracted', '');
+  } catch(e) {
+    if (panel) panel.innerHTML = `<span style="color:var(--red);">OCR failed: ${e.message}</span>`;
+    toast('OCR failed: ' + e.message, 'err');
+  }
+  if (ocrBtn) { ocrBtn.textContent = '🔍 OCR All Fields'; ocrBtn.disabled = false; }
+}
+
+// ── FORM ACTIONS ──────────────────────────────────────────────────────
+function fill(k, v) { const el = document.getElementById('f-'+k); if(el){el.value=v;el.focus();} }
+function aFill() {
+  if (curIdx===null) return;
+  const row = ROWS[curIdx];
+  const p   = pMR(row.model_res); if (!p) return;
+  const dt  = row.doc_type;
+  const dtCfg = CFG.docTypes[dt]; if (!dtCfg) return;
+  dtCfg.fields.forEach(f => { const v = modelSuggest(p, f); if(v) fill(f.k, v); });
+  toast(CFG.ui.autofillBtnText + ' done', 'ok');
+}
+function clrF() { document.querySelectorAll('.fi').forEach(i => i.value=''); }
+
+// ── SKIP ──────────────────────────────────────────────────────────────
+function skipDoc(idx) {
+  V[ROWS[idx].ref_id] = { skipped:true, fields:{}, cer_fields:{}, avg_cer:null, doc_status:'', ts:new Date().toISOString() };
+  saveSession(); buildSB(); updateProg(); toast('Skipped');
+  if (idx < ROWS.length-1) nav(1);
+}
+
+// ── SUBMIT + CER ──────────────────────────────────────────────────────
+function submit(idx) {
+  const row   = ROWS[idx];
+  const p     = pMR(row.model_res);
+  const dt    = row.doc_type;
+  const dtCfg = CFG.docTypes[dt];
+  const fields= dtCfg ? dtCfg.fields : [];
+
+  // Validate doc status
+  const dsEl  = document.getElementById('f-doc_status');
+  const dsVal = dsEl ? dsEl.value.trim() : '';
+  if (!dsVal) {
+    if (dsEl) dsEl.classList.add('er');
+    toast('Please select document status', 'err'); return;
+  }
+  if (dsEl) dsEl.classList.remove('er');
+
+  // Validate all fields
+  const vals = {}; let ok = true;
+  fields.forEach(f => {
+    const el = document.getElementById('f-'+f.k);
+    const v  = (el ? el.value : '').trim();
+    vals[f.k] = v;
+    if (!v) { if(el) el.classList.add('er'); ok=false; }
+    else    { if(el) el.classList.remove('er'); }
+  });
+  if (!ok) { toast('Fill all required fields', 'err'); return; }
+
+  // CER per field — if model had no value it's a detection failure, not CER error
+  const cf = {};
+  fields.forEach(f => {
+    const mv = modelSuggest(p, f);
+    const wasDetected = !!mv;
+    cf[f.k] = { manual: vals[f.k], model: mv, cer: cer(vals[f.k], mv), detected: wasDetected };
+  });
+  const avg = fields.length ? Object.values(cf).reduce((s,v)=>s+v.cer,0)/fields.length : 0;
+  const missingCount = fields.filter(f=>!cf[f.k]?.detected).length;
+
+  V[row.ref_id] = { skipped:false, fields:vals, cer_fields:cf, avg_cer:avg, doc_type:dt, doc_status:dsVal, missing_fields:missingCount, ts:new Date().toISOString() };
+  saveSession(); buildSB(); updateProg();
+  showCER(idx, cf, avg, missingCount);
+}
+
+// ── CER MODAL ─────────────────────────────────────────────────────────
+function showCER(idx, cf, avg, missingCount) {
+  const row   = ROWS[idx];
+  const dt    = row.doc_type;
+  const dtCfg = CFG.docTypes[dt];
+  const fields= dtCfg ? dtCfg.fields : [];
+  const pct   = Math.round(avg*100);
+  const vd    = V[row.ref_id];
+  const dsLabel = CFG.docStatusOptions.find(o=>o.value===vd.doc_status)?.label || vd.doc_status;
+
+  const ov = document.createElement('div'); ov.className='ov'; ov.id='cerOv';
+  ov.innerHTML = `<div class="modal">
+    <div class="mhdr"><h2>CER Result</h2><button class="mcl" onclick="cModal('cerOv')">×</button></div>
+    <div class="mbody">
+      <div class="cer-hero">
+        <div class="cer-n ${cClass(avg)}">${pct}%</div>
+        <div class="cer-s">${pct<=10?'✅ Excellent':pct<=35?'⚠️ Moderate errors':'❌ High error rate'} — Avg CER</div>
+      </div>
+      ${missingCount>0?`<div class="missing-alert" style="margin-bottom:12px;">
+        <div class="missing-alert-icon">⚠</div>
+        <div><strong>${missingCount} field${missingCount>1?'s were':' was'} not detected by the model</strong> — manually entered values used for CER.</div>
+      </div>`:''}
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 12px;margin-bottom:12px;font-size:12px;">
+        <span style="color:var(--text3);">Document Status:</span>
+        <strong style="margin-left:6px;">${dsLabel}</strong>
+      </div>
+      <table class="ctbl">
+        <thead><tr><th>Field</th><th>Detected</th><th>Manual</th><th>Model</th><th>CER</th></tr></thead>
+        <tbody>${fields.map(f=>{
+          const d=cf[f.k]||{cer:0,manual:'',model:'',detected:false};
+          return`<tr>
+            <td>${f.l}</td>
+            <td>${d.detected?'<span style="color:var(--green);font-size:11px;">✓ Yes</span>':'<span style="color:var(--amber);font-size:11px;">⚠ No</span>'}</td>
+            <td>${d.manual||'—'}</td>
+            <td>${d.model||'<span style="color:var(--text3);font-style:italic;">not found</span>'}</td>
+            <td class="${cCls(d.cer)}">${Math.round((d.cer||0)*100)}%</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-out btn-sm" onclick="cModal('cerOv')">Close</button>
+      <button class="btn btn-blue btn-sm" onclick="cModal('cerOv');nav(1)">Next →</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+// ── REPORT TYPE PICKER ────────────────────────────────────────────────
+function showReport() {
+  if (!ROWS.length) { toast('No data loaded', 'err'); return; }
+  const ov = document.createElement('div'); ov.className='ov'; ov.id='rptPickOv';
+  ov.innerHTML = `<div class="modal" style="width:460px;">
+    <div class="mhdr"><h2>📊 Generate Report</h2><button class="mcl" onclick="cModal('rptPickOv')">×</button></div>
+    <div class="mbody">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Choose the type of report you want to generate:</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="rpt-pick-btn" onclick="cModal('rptPickOv');buildReport('overview')">
+          <div class="rpb-icon">📈</div>
+          <div>
+            <div class="rpb-title">Overall Analysis</div>
+            <div class="rpb-sub">Charts, CER trends, doc quality breakdown, model performance</div>
+          </div>
+        </button>
+        <button class="rpt-pick-btn" onclick="cModal('rptPickOv');buildReport('per_doc')">
+          <div class="rpb-icon">📋</div>
+          <div>
+            <div class="rpb-title">Per Document Results</div>
+            <div class="rpb-sub">Row-by-row table with field-level CER for every verified record</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+// ── REPORT BUILDER ────────────────────────────────────────────────────
+// ── ANALYTICS DATA BUILDER ────────────────────────────────────────────
+function _buildAnalytics() {
+  const verifiedList = Object.entries(V).filter(([,v])=>!v.skipped&&v.avg_cer!=null);
+  const total  = ROWS.length;
+  const done   = Object.values(V).filter(v=>!v.skipped).length;
+  const skp    = Object.values(V).filter(v=>v.skipped).length;
+  const cers   = verifiedList.map(([,v])=>v.avg_cer);
+  const avgC   = cers.length ? cers.reduce((a,b)=>a+b,0)/cers.length : 0;
+  const defN   = ROWS.filter(r=>{const p=pMR(r.model_res);return p&&p.is_default_responce;}).length;
+
+  // doc type counts
+  const dtCounts={};
+  ROWS.forEach(r=>{ dtCounts[r.doc_type]=(dtCounts[r.doc_type]||0)+1; });
+
+  // doc status counts (verified only)
+  const dsCounts={};
+  Object.values(V).filter(v=>!v.skipped&&v.doc_status).forEach(v=>{
+    dsCounts[v.doc_status]=(dsCounts[v.doc_status]||0)+1;
+  });
+
+  // CER buckets
+  const cerB={good:0,mid:0,bad:0};
+  cers.forEach(c=>{if(c<=.1)cerB.good++;else if(c<=.35)cerB.mid++;else cerB.bad++;});
+
+  // CER by doc status — for each status: list of CER values
+  const cerByStatus={};
+  verifiedList.forEach(([rid,vd])=>{
+    const ds=vd.doc_status||'unknown';
+    if(!cerByStatus[ds]) cerByStatus[ds]=[];
+    cerByStatus[ds].push(vd.avg_cer);
+  });
+
+  // CER by doc type
+  const cerByType={};
+  verifiedList.forEach(([rid,vd])=>{
+    const row=ROWS.find(r=>r.ref_id===rid); if(!row) return;
+    const dt=row.doc_type;
+    if(!cerByType[dt]) cerByType[dt]=[];
+    cerByType[dt].push(vd.avg_cer);
+  });
+
+  // Field-level avg CER across all docs
+  const fieldCers={};
+  verifiedList.forEach(([,vd])=>{
+    Object.entries(vd.cer_fields||{}).forEach(([fk,fd])=>{
+      if(!fieldCers[fk]) fieldCers[fk]=[];
+      fieldCers[fk].push(fd.cer);
+    });
+  });
+  const fieldAvg=Object.fromEntries(Object.entries(fieldCers).map(([k,arr])=>[k,arr.reduce((a,b)=>a+b,0)/arr.length]));
+
+  // Perfect fields
+  let perfectFields=0;
+  verifiedList.forEach(([,vd])=>Object.values(vd.cer_fields||{}).forEach(fd=>{if(fd.cer===0)perfectFields++;}));
+
+  // Missing field analytics — per-field detection failure count
+  const fieldDetectionFail = {};  // fieldKey -> count of times not detected
+  const fieldDetectionTotal= {};  // fieldKey -> count of times evaluated
+  const verifiedList = Object.entries(V).filter(([,v])=>!v.skipped&&v.cer_fields);
+  verifiedList.forEach(([rid,vd])=>{
+    Object.entries(vd.cer_fields||{}).forEach(([fk,fd])=>{
+      fieldDetectionTotal[fk] = (fieldDetectionTotal[fk]||0)+1;
+      if (!fd.detected) fieldDetectionFail[fk] = (fieldDetectionFail[fk]||0)+1;
+    });
+  });
+  // Docs with at least one missing field
+  const docsWithMissing = verifiedList.filter(([,vd])=>vd.missing_fields>0).length;
+  // Total missing field instances
+  const totalMissingInstances = Object.values(V).filter(v=>!v.skipped).reduce((s,v)=>s+(v.missing_fields||0),0);
+
+  return {total,done,skp,pending:total-done-skp,cers,avgC,defN,dtCounts,dsCounts,cerB,cerByStatus,cerByType,fieldAvg,perfectFields,
+          fieldDetectionFail,fieldDetectionTotal,docsWithMissing,totalMissingInstances};
+}
+
+function buildReport(type) {
+  const A      = _buildAnalytics();
+  const genAt  = new Date().toLocaleString();
+  const uLabel = USERNAME ? `Verified by: <strong>${USERNAME}</strong> &nbsp;&bull;&nbsp; ` : '';
+  let content  = '';
+
+  if (type === 'overview') {
+    // ── stat cards row ──
+    const completionPct = A.total ? Math.round((A.done+A.skp)/A.total*100) : 0;
+    const dsStatusColors = {clear:'#17a96e',blur:'#f59e0b',tilted:'#f59e0b',bw:'#9099b5',wrong_doc:'#e5354e',partial:'#f59e0b',glare:'#f59e0b',damaged:'#e5354e',other:'#7c3aed'};
+    const PALETTE = ['#3b6ef8','#17a96e','#f59e0b','#e5354e','#7c3aed','#06b6d4','#ec4899','#84cc16'];
+
+    content = `
+<!-- ══ KPI STRIP ══ -->
+<div class="rs"><h3>Key Metrics</h3>
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;">
+    ${[
+      {l:'Total',v:A.total,c:'b'},
+      {l:'Verified',v:A.done,c:'g'},
+      {l:'Skipped',v:A.skp,c:''},
+      {l:'Pending',v:A.pending,c:'a'},
+      {l:'Avg CER',v:A.cers.length?Math.round(A.avgC*100)+'%':'N/A',c:A.avgC<=.1?'g':A.avgC<=.35?'a':'r'},
+      {l:'Default Resp.',v:A.defN,c:A.defN?'r':'g'},
+    ].map(m=>`<div class="mb"><div class="mbl">${m.l}</div><div class="mbv ${m.c}">${m.v}</div></div>`).join('')}
+  </div>
+  <div style="margin-top:10px;">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px;"><span>Completion</span><span>${completionPct}%</span></div>
+    <div style="height:8px;background:var(--border);border-radius:8px;overflow:hidden;">
+      <div style="height:100%;width:${completionPct}%;background:linear-gradient(90deg,#17a96e,#3b6ef8);border-radius:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ROW 1: Progress donut + CER quality donut ══ -->
+<div class="rs"><h3>Verification Progress &amp; CER Quality</h3>
+  <div class="ch2">
+    <div class="chart-card">
+      <div class="cc-title">Verification Status</div>
+      <div class="donut-wrap">
+        <canvas id="c-prog" width="180" height="180"></canvas>
+        <div class="donut-legend">
+          <div class="cl-item"><div class="cl-dot" style="background:#17a96e"></div><span>Verified <b>${A.done}</b></span></div>
+          <div class="cl-item"><div class="cl-dot" style="background:#9099b5"></div><span>Skipped <b>${A.skp}</b></span></div>
+          <div class="cl-item"><div class="cl-dot" style="background:#f59e0b"></div><span>Pending <b>${A.pending}</b></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">CER Quality Buckets</div>
+      <div class="donut-wrap">
+        <canvas id="c-cerq" width="180" height="180"></canvas>
+        <div class="donut-legend">
+          <div class="cl-item"><div class="cl-dot" style="background:#17a96e"></div><span>Excellent ≤10% <b>${A.cerB.good}</b></span></div>
+          <div class="cl-item"><div class="cl-dot" style="background:#f59e0b"></div><span>Moderate ≤35% <b>${A.cerB.mid}</b></span></div>
+          <div class="cl-item"><div class="cl-dot" style="background:#e5354e"></div><span>High &gt;35% <b>${A.cerB.bad}</b></span></div>
+          ${A.cers.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
+            Min: <b>${Math.round(Math.min(...A.cers)*100)}%</b> &nbsp;Avg: <b>${Math.round(A.avgC*100)}%</b> &nbsp;Max: <b>${Math.round(Math.max(...A.cers)*100)}%</b>
+          </div>`:''}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ROW 2: Doc type donut + Document quality bar ══ -->
+<div class="rs"><h3>Document Type &amp; Quality Distribution</h3>
+  <div class="ch2">
+    <div class="chart-card">
+      <div class="cc-title">Document Types</div>
+      <div class="donut-wrap">
+        <canvas id="c-dtype" width="180" height="180"></canvas>
+        <div class="donut-legend">
+          ${Object.entries(A.dtCounts).map(([k,v],i)=>`<div class="cl-item"><div class="cl-dot" style="background:${PALETTE[i%PALETTE.length]}"></div><span>${CFG.docTypes[k]?.label||k} <b>${v}</b></span></div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="chart-card" style="flex:1.4;">
+      <div class="cc-title">Document Quality Issues (verified records)</div>
+      <canvas id="c-qual" width="340" height="220" style="width:100%;max-width:340px;"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ROW 3: CER by Document Status — grouped bar ══ -->
+<div class="rs"><h3>CER Distribution by Document Status</h3>
+  <div class="chart-card" style="width:100%;">
+    <div class="cc-title">Average CER % per document status (lower = better extraction)</div>
+    <canvas id="c-cerds" width="600" height="220" style="width:100%;"></canvas>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;">
+      ${CFG.docStatusOptions.filter(o=>o.value&&A.cerByStatus[o.value]).map(o=>{
+        const arr=A.cerByStatus[o.value]||[];
+        const avg=arr.length?Math.round(arr.reduce((a,b)=>a+b,0)/arr.length*100):0;
+        return`<div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:11px;">
+          <div style="color:var(--text3);margin-bottom:2px;">${o.label.replace(/^.\s/,'')}</div>
+          <div style="font-weight:700;font-family:'JetBrains Mono';color:${avg<=10?'var(--green)':avg<=35?'var(--amber)':'var(--red)'};">${avg}% <span style="font-weight:400;color:var(--text3);">(n=${arr.length})</span></div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+</div>
+
+<!-- ══ ROW 4: CER trend line ══ -->
+${A.cers.length>1?`<div class="rs"><h3>CER Trend Across Verified Records</h3>
+  <div class="chart-card" style="width:100%;">
+    <div class="cc-title">Character Error Rate (%) per record — coloured by quality threshold</div>
+    <canvas id="c-trend" width="600" height="200" style="width:100%;"></canvas>
+    <div style="display:flex;gap:16px;margin-top:8px;">
+      <div class="cl-item"><div class="cl-dot" style="background:#17a96e"></div><span style="font-size:11px;">Excellent (≤10%)</span></div>
+      <div class="cl-item"><div class="cl-dot" style="background:#f59e0b"></div><span style="font-size:11px;">Moderate (≤35%)</span></div>
+      <div class="cl-item"><div class="cl-dot" style="background:#e5354e"></div><span style="font-size:11px;">High (&gt;35%)</span></div>
+    </div>
+  </div>
+</div>`:''}
+
+<!-- ══ ROW 5: Field-level avg CER bars ══ -->
+${Object.keys(A.fieldAvg).length?`<div class="rs"><h3>Field-Level Average CER</h3>
+  <div class="chart-card" style="width:100%;">
+    <div class="cc-title">Which fields have the most extraction errors across all verified documents?</div>
+    <canvas id="c-fields" width="600" height="${Math.max(160, Object.keys(A.fieldAvg).length*36)}" style="width:100%;"></canvas>
+  </div>
+</div>`:''}
+
+<!-- ══ ROW 6: CER by doc type ══ -->
+${Object.keys(A.cerByType).length>1?`<div class="rs"><h3>CER by Document Type</h3>
+  <div class="ch2">
+    ${Object.entries(A.cerByType).map(([dt,arr],i)=>{
+      const avg=Math.round(arr.reduce((a,b)=>a+b,0)/arr.length*100);
+      const good=arr.filter(c=>c<=.1).length, mid=arr.filter(c=>c>.1&&c<=.35).length, bad=arr.filter(c=>c>.35).length;
+      return`<div class="chart-card">
+        <div class="cc-title">${CFG.docTypes[dt]?.label||dt} (${arr.length} docs)</div>
+        <div style="text-align:center;margin:10px 0;">
+          <div style="font-size:36px;font-weight:700;font-family:'JetBrains Mono';color:${avg<=10?'var(--green)':avg<=35?'var(--amber)':'var(--red)'};">${avg}%</div>
+          <div style="font-size:11px;color:var(--text3);">avg CER</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:11px;text-align:center;">
+          <div style="background:var(--green-lt);border-radius:6px;padding:5px;color:var(--green);font-weight:600;">${good}<div style="font-weight:400;color:var(--text3);">Good</div></div>
+          <div style="background:var(--amber-lt);border-radius:6px;padding:5px;color:var(--amber);font-weight:600;">${mid}<div style="font-weight:400;color:var(--text3);">Mid</div></div>
+          <div style="background:var(--red-lt);border-radius:6px;padding:5px;color:var(--red);font-weight:600;">${bad}<div style="font-weight:400;color:var(--text3);">High</div></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+</div>`:''}
+
+<!-- ══ ROW 7: Missing field detection analysis ══ -->
+${Object.keys(A.fieldDetectionFail).length?`<div class="rs"><h3>Field Detection Failures</h3>
+  <div class="chart-card" style="width:100%;">
+    <div class="cc-title">How often did the model FAIL to detect each field? (lower = better)</div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+      <div class="mb" style="flex:1;min-width:120px;"><div class="mbl">Docs with ≥1 Missing Field</div><div class="mbv ${A.docsWithMissing>0?'r':'g'}">${A.docsWithMissing}</div></div>
+      <div class="mb" style="flex:1;min-width:120px;"><div class="mbl">Total Missing Instances</div><div class="mbv ${A.totalMissingInstances>0?'r':'g'}">${A.totalMissingInstances}</div></div>
+      <div class="mb" style="flex:1;min-width:120px;"><div class="mbl">Detection Rate</div><div class="mbv g">${A.done?Math.round((1-A.totalMissingInstances/(A.done*Math.max(...Object.values(A.fieldDetectionTotal),1)))*100)+'%':'N/A'}</div></div>
+    </div>
+    <canvas id="c-missingfields" width="600" height="${Math.max(100, Object.keys(A.fieldDetectionTotal).length*34)}" style="width:100%;"></canvas>
+  </div>
+</div>`:''}
+
+<!-- ══ ROW 8: Model performance ══ -->
+<div class="rs"><h3>Model Performance Summary</h3>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+    <div class="mb"><div class="mbl">Default Responses</div><div class="mbv ${A.defN?'r':'g'}">${A.defN}<span style="font-size:12px;color:var(--text3);"> / ${A.total}</span></div></div>
+    <div class="mb"><div class="mbl">Perfect Fields (0% CER)</div><div class="mbv g">${A.perfectFields}</div></div>
+    <div class="mb"><div class="mbl">High-Error Docs</div><div class="mbv r">${A.cerB.bad}</div></div>
+    <div class="mb"><div class="mbl">Accuracy Rate</div><div class="mbv ${A.cerB.bad===0?'g':'a'}">${A.cers.length?Math.round(A.cerB.good/A.cers.length*100)+'%':'N/A'}</div></div>
+  </div>
+</div>`;
+
+  } else {
+    // Per-doc table
+    const rws = ROWS.map((r,i) => {
+      const vd = V[r.ref_id]; const p = pMR(r.model_res);
+      const st = vd?(vd.skipped?'Skipped':'Verified'):'Pending';
+      const ct = vd&&!vd.skipped&&vd.avg_cer!=null?Math.round(vd.avg_cer*100)+'%':'—';
+      const dsL = vd&&vd.doc_status?(CFG.docStatusOptions.find(o=>o.value===vd.doc_status)?.label||vd.doc_status):'—';
+      return `<tr><td>${i+1}</td><td style="font-size:10px">${sid(r.ref_id)}</td><td>${gName(p)}</td><td>${(r.doc_type||'').toUpperCase()}</td><td>${dsL}</td><td>${st}</td><td class="${vd&&!vd.skipped&&vd.avg_cer!=null?cCls(vd.avg_cer):''}">${ct}</td></tr>`;
+    }).join('');
+    const fieldRows = Object.entries(V).filter(([,v])=>!v.skipped&&v.cer_fields).flatMap(([rid,vd])=>
+      Object.entries(vd.cer_fields).map(([fk,fd])=>`<tr><td>${sid(rid)}</td><td>${fk}</td><td>${fd.manual||'—'}</td><td>${fd.model||'—'}</td><td class="${cCls(fd.cer)}">${Math.round(fd.cer*100)}%</td></tr>`)
+    ).join('');
+    content = `
+      <div class="rs"><h3>Per Document Results</h3>
+        <table class="rtbl">
+          <thead><tr><th>#</th><th>Ref ID</th><th>Name</th><th>Type</th><th>Doc Status</th><th>Status</th><th>Avg CER</th></tr></thead>
+          <tbody>${rws}</tbody>
+        </table>
+      </div>
+      ${fieldRows?`<div class="rs"><h3>Field-Level CER</h3>
+        <table class="rtbl">
+          <thead><tr><th>Ref ID</th><th>Field</th><th>Manual</th><th>Model</th><th>CER</th></tr></thead>
+          <tbody>${fieldRows}</tbody>
+        </table>
+      </div>`:''}`;
+  }
+
+  const ov = document.createElement('div'); ov.className='ov'; ov.id='rptOv';
+  ov.innerHTML = `<div class="rpt-m">
+    <div class="rpt-b">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;">
+        <div>
+          <div class="rt">${type==='overview'?'Overall Analysis':'Per Document Results'}</div>
+          <div class="rsub">${uLabel}Generated: ${genAt}</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-out btn-sm" onclick="cModal('rptOv');showReport()">← Back</button>
+          <button class="btn btn-out btn-sm" onclick="pRpt()">🖨 Print</button>
+          <button class="btn btn-out btn-sm" onclick="cModal('rptOv')">✕</button>
+        </div>
+      </div>
+      ${content}
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+
+  if (type === 'overview') {
+    requestAnimationFrame(() => { _drawAllCharts(A); });
+  }
+}
+
+function _countPerfectFields() {
+  let cnt=0;
+  Object.values(V).filter(v=>!v.skipped&&v.cer_fields).forEach(vd=>{
+    Object.values(vd.cer_fields).forEach(fd=>{ if(fd.cer===0) cnt++; });
+  });
+  return cnt;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CHART ENGINE  —  all vanilla Canvas 2D, no libraries
+// ═══════════════════════════════════════════════════════════
+const PALETTE8 = ['#3b6ef8','#17a96e','#f59e0b','#e5354e','#7c3aed','#06b6d4','#ec4899','#84cc16'];
+
+function _drawAllCharts(A) {
+  const PALETTE = PALETTE8;
+  // 1. Progress donut
+  _donut('c-prog', [A.done,A.skp,A.pending], ['#17a96e','#9099b5','#f59e0b'], A.total, 'total');
+  // 2. CER quality donut
+  _donut('c-cerq', [A.cerB.good,A.cerB.mid,A.cerB.bad], ['#17a96e','#f59e0b','#e5354e'], A.cers.length, 'docs');
+  // 3. Doc type donut
+  _donut('c-dtype', Object.values(A.dtCounts), Object.keys(A.dtCounts).map((_,i)=>PALETTE[i%PALETTE.length]), A.total, 'total');
+  // 4. Quality bar (doc status)
+  const dsOpts = CFG.docStatusOptions.filter(o=>o.value);
+  _barH('c-qual', dsOpts.map(o=>o.label.replace(/^[^ ]+ /,'')), dsOpts.map(o=>A.dsCounts[o.value]||0),
+        dsOpts.map(o=>({clear:'#17a96e',blur:'#f59e0b',tilted:'#f59e0b',bw:'#9099b5',wrong_doc:'#e5354e',partial:'#f59e0b',glare:'#f59e0b',damaged:'#e5354e',other:'#7c3aed'}[o.value]||'#3b6ef8')));
+  // 5. CER by doc status — horizontal bars showing avg CER per status
+  const cerDsLabels=[], cerDsVals=[], cerDsColors=[];
+  CFG.docStatusOptions.filter(o=>o.value&&A.cerByStatus[o.value]).forEach(o=>{
+    const arr=A.cerByStatus[o.value];
+    const avg=arr.reduce((a,b)=>a+b,0)/arr.length;
+    cerDsLabels.push(o.label.replace(/^[^ ]+ /,'').substring(0,22));
+    cerDsVals.push(Math.round(avg*100));
+    cerDsColors.push(avg<=.1?'#17a96e':avg<=.35?'#f59e0b':'#e5354e');
+  });
+  _barHColor('c-cerds', cerDsLabels, cerDsVals, cerDsColors, '%', 100);
+  // 6. CER trend line
+  if (A.cers.length>1) {
+    const cerPcts = A.cers.map(c=>Math.round(c*100));
+    _lineCER('c-trend', cerPcts);
+  }
+  // 8. Missing field detection failures
+  if (Object.keys(A.fieldDetectionFail).length) {
+    const mfKeys   = Object.keys(A.fieldDetectionTotal);
+    const mfFails  = mfKeys.map(k=>A.fieldDetectionFail[k]||0);
+    const mfTotals = mfKeys.map(k=>A.fieldDetectionTotal[k]);
+    const mfColors = mfFails.map((v,i)=> v===0?'#17a96e': v/mfTotals[i]>=.5?'#e5354e':'#f59e0b');
+    // Show as: "fail / total" with % fill
+    const mfPcts   = mfFails.map((v,i)=>mfTotals[i]?Math.round(v/mfTotals[i]*100):0);
+    _barHColor('c-missingfields', mfKeys, mfPcts, mfColors, '% miss', 100);
+  }
+    const fKeys = Object.keys(A.fieldAvg);
+    const fVals = fKeys.map(k=>Math.round(A.fieldAvg[k]*100));
+    const fColors = fVals.map(v=>v<=10?'#17a96e':v<=35?'#f59e0b':'#e5354e');
+    _barHColor('c-fields', fKeys, fVals, fColors, '%', 100);
+  }
+}
+
+// ── Donut chart ────────────────────────────────────────────────────────
+function _donut(id, data, colors, centerVal, centerLabel) {
+  const c=document.getElementById(id); if(!c) return;
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height,cx=W/2,cy=H/2;
+  const R=Math.min(cx,cy)*0.82, ri=R*0.54;
+  const tot=data.reduce((a,b)=>a+b,0);
+  ctx.clearRect(0,0,W,H);
+  if(!tot){
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+    ctx.fillStyle='#e2e6f0'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx,cy,ri,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+    return;
+  }
+  let ang=-Math.PI/2;
+  data.forEach((v,i)=>{
+    if(!v) return;
+    const sl=(v/tot)*Math.PI*2;
+    // Slightly separated segments
+    ctx.save();
+    ctx.translate(cx,cy);
+    const midAng=ang+sl/2;
+    ctx.translate(Math.cos(midAng)*1.5,Math.sin(midAng)*1.5);
+    ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.arc(0,0,R,ang-Math.PI/2+Math.PI/2, ang+sl-Math.PI/2+Math.PI/2);
+    ctx.closePath(); ctx.fillStyle=colors[i%colors.length]; ctx.fill();
+    ctx.restore();
+    ang+=sl;
+  });
+  // Redraw without translate for clean donut
+  ctx.clearRect(0,0,W,H);
+  ang=-Math.PI/2;
+  data.forEach((v,i)=>{
+    if(!v) return;
+    const sl=(v/tot)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,R,ang,ang+sl);
+    ctx.closePath(); ctx.fillStyle=colors[i%colors.length]; ctx.fill();
+    ang+=sl;
+  });
+  // Separator lines
+  ang=-Math.PI/2;
+  data.forEach((v)=>{
+    if(!v) return;
+    const sl=(v/tot)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(ang)*R, cy+Math.sin(ang)*R);
+    ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    ang+=sl;
+  });
+  // Hole
+  ctx.beginPath(); ctx.arc(cx,cy,ri,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+  // Center text
+  ctx.fillStyle='#1a1e2e'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font=`bold ${Math.round(R*0.32)}px Inter,sans-serif`;
+  ctx.fillText(centerVal, cx, cy-8);
+  ctx.font=`${Math.round(R*0.17)}px Inter,sans-serif`; ctx.fillStyle='#9099b5';
+  ctx.fillText(centerLabel, cx, cy+12);
+}
+
+// ── Horizontal bar — single colour with gradient ───────────────────────
+function _barH(id, labels, data, colors) {
+  const c=document.getElementById(id); if(!c) return;
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  const n=labels.length; if(!n) return;
+  const maxV=Math.max(...data,1);
+  const padL=140,padR=44,padT=10,rowH=(H-padT)/n;
+  ctx.clearRect(0,0,W,H);
+  labels.forEach((lbl,i)=>{
+    const val=data[i]||0;
+    const y=padT+i*rowH;
+    const bw=(W-padL-padR)*(val/maxV);
+    const col=Array.isArray(colors)?colors[i%colors.length]:(colors||'#3b6ef8');
+    // Track bg
+    ctx.fillStyle='#f4f6fa'; ctx.beginPath();
+    ctx.roundRect?ctx.roundRect(padL,y+3,W-padL-padR,rowH-8,4):ctx.rect(padL,y+3,W-padL-padR,rowH-8);
+    ctx.fill();
+    // Bar
+    if(val&&bw>0){
+      const g=ctx.createLinearGradient(padL,0,padL+bw,0);
+      g.addColorStop(0,col); g.addColorStop(1,col+'99');
+      ctx.fillStyle=g; ctx.beginPath();
+      ctx.roundRect?ctx.roundRect(padL,y+3,bw,rowH-8,4):ctx.rect(padL,y+3,bw,rowH-8);
+      ctx.fill();
+    }
+    // Label (truncate)
+    ctx.fillStyle='#5a6380'; ctx.font='11px Inter,sans-serif'; ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(lbl.length>20?lbl.substring(0,19)+'…':lbl, padL-8, y+rowH/2);
+    // Value badge
+    ctx.fillStyle=val?'#1a1e2e':'#9099b5'; ctx.textAlign='left'; ctx.font=`bold 11px Inter,sans-serif`;
+    ctx.fillText(val, padL+bw+6, y+rowH/2);
+  });
+}
+
+// ── Horizontal bar — individual per-bar colours + optional max + suffix ─
+function _barHColor(id, labels, data, colors, suffix, maxScale) {
+  const c=document.getElementById(id); if(!c) return;
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  const n=labels.length; if(!n) return;
+  const maxV=maxScale||Math.max(...data,1);
+  const padL=150,padR=50,padT=10,rowH=(H-padT)/n;
+  ctx.clearRect(0,0,W,H);
+  // Reference lines at 10%, 35%
+  if(maxScale===100){
+    [10,35].forEach(ref=>{
+      const x=padL+(W-padL-padR)*(ref/maxV);
+      ctx.strokeStyle=ref===10?'rgba(23,169,110,.3)':'rgba(229,53,78,.25)';
+      ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,H); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle=ref===10?'#17a96e99':'#e5354e99'; ctx.font='9px Inter'; ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText(ref+'%',x,1);
+    });
+  }
+  labels.forEach((lbl,i)=>{
+    const val=data[i]||0;
+    const y=padT+i*rowH;
+    const bw=(W-padL-padR)*(val/maxV);
+    const col=colors[i]||'#3b6ef8';
+    ctx.fillStyle='#f4f6fa'; ctx.beginPath();
+    ctx.roundRect?ctx.roundRect(padL,y+3,W-padL-padR,rowH-8,4):ctx.rect(padL,y+3,W-padL-padR,rowH-8);
+    ctx.fill();
+    if(val&&bw>0){
+      ctx.fillStyle=col+'cc'; ctx.beginPath();
+      ctx.roundRect?ctx.roundRect(padL,y+3,bw,rowH-8,4):ctx.rect(padL,y+3,bw,rowH-8);
+      ctx.fill();
+    }
+    ctx.fillStyle='#5a6380'; ctx.font='11px Inter,sans-serif'; ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(lbl.length>22?lbl.substring(0,21)+'…':lbl, padL-8, y+rowH/2);
+    ctx.fillStyle=col; ctx.textAlign='left'; ctx.font=`bold 11px Inter,sans-serif`;
+    ctx.fillText(val+(suffix||''), padL+bw+6, y+rowH/2);
+  });
+}
+
+// ── CER trend line with shaded area ──────────────────────────────────
+function _lineCER(id, data) {
+  const c=document.getElementById(id); if(!c) return;
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  const padL=40,padR=20,padT=20,padB=28;
+  const dW=W-padL-padR, dH=H-padT-padB;
+  const n=data.length; if(n<2) return;
+  ctx.clearRect(0,0,W,H);
+  // Grid + Y axis labels
+  [0,10,25,35,50,75,100].forEach(v=>{
+    const y=padT+dH*(1-v/100);
+    ctx.strokeStyle=v===10?'rgba(23,169,110,.25)':v===35?'rgba(229,53,78,.25)':'#e2e6f0';
+    ctx.lineWidth=v===10||v===35?1.5:1; ctx.setLineDash(v===10||v===35?[5,4]:[]);
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=v===10?'#17a96e':v===35?'#e5354e':'#9099b5';
+    ctx.font='9px JetBrains Mono,monospace'; ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(v+'%',padL-4,y);
+  });
+  // Threshold labels
+  ctx.fillStyle='#17a96e'; ctx.font='bold 9px Inter'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText('Good ≤10',padL+4, padT+dH*(1-10/100)-8);
+  ctx.fillStyle='#e5354e';
+  ctx.fillText('Threshold 35%',padL+4, padT+dH*(1-35/100)-8);
+
+  const pts=data.map((v,i)=>({x:padL+i/(n-1)*dW,y:padT+dH*(1-Math.min(v,100)/100),v}));
+
+  // Shaded area under line
+  ctx.beginPath(); ctx.moveTo(pts[0].x,padT+dH);
+  pts.forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.lineTo(pts[n-1].x,padT+dH); ctx.closePath();
+  const gArea=ctx.createLinearGradient(0,padT,0,padT+dH);
+  gArea.addColorStop(0,'rgba(59,110,248,.18)'); gArea.addColorStop(1,'rgba(59,110,248,.02)');
+  ctx.fillStyle=gArea; ctx.fill();
+
+  // Line segments coloured by quality
+  for(let i=1;i<pts.length;i++){
+    const prev=pts[i-1],cur=pts[i];
+    const mid=(prev.v+cur.v)/2;
+    ctx.beginPath(); ctx.moveTo(prev.x,prev.y); ctx.lineTo(cur.x,cur.y);
+    ctx.strokeStyle=mid<=10?'#17a96e':mid<=35?'#f59e0b':'#e5354e';
+    ctx.lineWidth=2; ctx.stroke();
+  }
+
+  // Dots + tooltip-style labels for notable points
+  pts.forEach((p,i)=>{
+    const col=p.v<=10?'#17a96e':p.v<=35?'#f59e0b':'#e5354e';
+    ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2);
+    ctx.fillStyle='#fff'; ctx.fill();
+    ctx.strokeStyle=col; ctx.lineWidth=2; ctx.stroke();
+    // Only label first, last, and outliers
+    if(i===0||i===n-1||p.v>35||p.v===0||i===Math.floor(n/2)){
+      const lbl=p.v+'%';
+      const lx=Math.min(Math.max(p.x,padL+14),W-padR-14);
+      const ly=p.y>padT+12?p.y-10:p.y+14;
+      ctx.fillStyle=col; ctx.font='bold 10px Inter'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.fillText(lbl,lx,ly);
+    }
+  });
+  // X axis doc labels
+  pts.forEach((p,i)=>{
+    ctx.fillStyle='#9099b5'; ctx.font='9px Inter'; ctx.textAlign='center'; ctx.textBaseline='top';
+    if(n<=15||i%(Math.ceil(n/10))===0) ctx.fillText('#'+(i+1),p.x,padT+dH+4);
+  });
+}
+
+function pRpt() {
+  const s = document.createElement('style'); s.id='ps';
+  s.textContent='@media print{body>*:not(#rptOv){display:none!important;}.ov{position:static!important;background:none!important;}.rpt-m{box-shadow:none!important;max-height:none!important;border:none!important;overflow:visible!important;}.btn{display:none!important;}}';
+  document.head.appendChild(s); window.print();
+  setTimeout(()=>document.getElementById('ps')?.remove(),1000);
+}
+
+// ── CSV EXPORT (config-driven columns) ───────────────────────────────
+function exportCSV() {
+  if (!ROWS.length) { toast('No data to export', 'err'); return; }
+  const cols = CFG.exportColumns;
+  const hdr  = cols.map(c=>c.header).join(',');
+  const body = ROWS.map(r => {
+    const vd = V[r.ref_id];
+    return cols.map(c => {
+      let v = '';
+      if      (c.key==='ref_id')      v = r.ref_id;
+      else if (c.key==='doc_type')    v = r.doc_type;
+      else if (c.key==='status')      v = vd ? (vd.skipped?'skipped':'verified') : 'pending';
+      else if (c.key==='doc_status')  v = vd ? (CFG.docStatusOptions.find(o=>o.value===vd.doc_status)?.label||vd.doc_status||'') : '';
+      else if (c.key==='avg_cer_pct') v = vd&&!vd.skipped&&vd.avg_cer!=null ? Math.round(vd.avg_cer*100)+'' : '';
+      else if (c.key==='timestamp')   v = vd ? vd.ts : '';
+      else v = vd && vd.fields ? (vd.fields[c.key]||'') : '';
+      return `"${(v||'').toString().replace(/"/g,'""').replace(/,/g,';')}"`;
+    }).join(',');
+  });
+  const csv = [hdr, ...body].join('\n');
+  const a   = document.createElement('a');
+  a.href    = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download= `smartqc_verified_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSV downloaded', 'ok');
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────
+function nav(d) {
+  if (curIdx === null) return;
+  const n = curIdx + d;
+  if (n >= 0 && n < ROWS.length) { sel(n); return; }
+  // End of records
+  if (n >= ROWS.length) showEndOfRecords();
+}
+
+function showEndOfRecords() {
+  const done    = Object.values(V).filter(v=>!v.skipped).length;
+  const skipped = Object.values(V).filter(v=>v.skipped).length;
+  const pending = ROWS.length - done - skipped;
+  const allDone = pending === 0;
+  const name    = USERNAME ? USERNAME.split(' ')[0] : 'there';
+
+  const ov = document.createElement('div'); ov.className='ov'; ov.id='eorOv';
+  ov.innerHTML = `<div class="modal" style="width:460px;overflow:hidden;">
+    <div style="background:linear-gradient(135deg,${allDone?'#17a96e,#3b6ef8':'#f59e0b,#e5354e'});padding:24px 22px 20px;text-align:center;">
+      <div style="font-size:52px;margin-bottom:8px;">${allDone?'🏆':'📋'}</div>
+      <h2 style="color:#fff;font-size:18px;font-weight:700;">${allDone?`All done, ${name}!`:`End of batch, ${name}!`}</h2>
+      <div style="color:rgba(255,255,255,.8);font-size:12px;margin-top:4px;">
+        ${allDone?'You have verified every single document. Extraordinary work!':'You\'ve reached the last record. Here\'s where things stand:'}
+      </div>
+    </div>
+    <div class="mbody">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+        <div style="background:var(--green-lt);border:1px solid var(--green);border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:700;font-family:'JetBrains Mono';color:var(--green);">${done}</div>
+          <div style="font-size:10px;color:var(--green);font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Verified</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:700;font-family:'JetBrains Mono';color:var(--text3);">${skipped}</div>
+          <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Skipped</div>
+        </div>
+        <div style="background:${pending?'var(--amber-lt)':'var(--green-lt)'};border:1px solid ${pending?'var(--amber)':'var(--green)'};border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:700;font-family:'JetBrains Mono';color:${pending?'var(--amber)':'var(--green)'};">${pending}</div>
+          <div style="font-size:10px;color:${pending?'var(--amber)':'var(--green)'};font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Pending</div>
+        </div>
+      </div>
+      ${allDone?`<div style="background:var(--blue-lt);border:1px solid var(--blue);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--blue);text-align:center;margin-bottom:12px;">
+        🎯 Perfect completion! Don't forget to <strong>export your CSV</strong> and <strong>generate a report</strong>.
+      </div>`:''}
+      ${pending?`<div style="background:var(--amber-lt);border:1px solid var(--amber);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--amber);margin-bottom:12px;">
+        ⚠ ${pending} record${pending!==1?'s':''} still pending. Use the sidebar to find and complete them.
+      </div>`:''}
+    </div>
+    <div class="mfoot" style="gap:8px;">
+      <button class="btn btn-out btn-sm" onclick="cModal('eorOv')">Back to List</button>
+      ${allDone?`<button class="btn btn-out btn-sm" onclick="cModal('eorOv');exportCSV()">⬇ Export CSV</button>`:''}
+      <button class="btn btn-blue btn-sm" onclick="cModal('eorOv');showReport()">📊 View Report</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  if (allDone) launchConfetti();
+}
+function cModal(id) { document.getElementById(id)?.remove(); }
+
+let _tt;
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show'+(type?' '+type:'');
+  clearTimeout(_tt); _tt = setTimeout(()=>el.className='',3200);
+}
+
+// ── RESET ─────────────────────────────────────────────────────────────
+function confirmReset() {
+  const done = Object.keys(V).length;
+  const ov = document.createElement('div'); ov.className='ov'; ov.id='resetOv';
+  ov.innerHTML = `<div class="reset-modal">
+    <div class="reset-danger-bar">
+      <div class="rd-icon">⚠️</div>
+      <h2>Reset All Progress?</h2>
+    </div>
+    <div class="reset-body">
+      <p>This will permanently erase <strong>all your work</strong>. You cannot undo this action.</p>
+      <ul class="reset-checklist">
+        <li>🗑 All ${done} verified record${done!==1?'s':''} will be deleted</li>
+        <li>🗑 All CER results and document status entries will be cleared</li>
+        <li>🗑 The imported CSV dataset will be removed</li>
+        <li>🗑 Your session will be wiped from browser storage</li>
+      </ul>
+      <label class="reset-input-label">Type <strong>RESET</strong> to confirm</label>
+      <input class="reset-confirm-input" id="reset-confirm-input" type="text" placeholder="Type RESET here…"
+        oninput="(function(v){var b=document.getElementById('reset-exec-btn');var ok=v==='RESET';b.disabled=!ok;b.style.opacity=ok?'1':'0.4';b.style.cursor=ok?'pointer':'not-allowed';})(this.value)">
+    </div>
+    <div class="mfoot" style="gap:8px;">
+      <button class="btn btn-out btn-sm" onclick="cModal('resetOv')">Cancel</button>
+      <button class="btn btn-sm" id="reset-exec-btn"
+        style="background:var(--red);color:#fff;opacity:.4;cursor:not-allowed;"
+        disabled onclick="executeReset()">↺ Reset Everything</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(() => document.getElementById('reset-confirm-input')?.focus(), 100);
+}
+
+function executeReset() {
+  cModal('resetOv');
+  try { localStorage.removeItem(CFG.session.storageKey); } catch(e) {}
+  ROWS = []; V = {}; curIdx = null; USERNAME = '';
+  buildSB(); updateProg(); updateHeaderGreeting();
+  document.getElementById('main').innerHTML = `
+    <div class="empty">
+      <div class="ico">📂</div>
+      <h2>Import a CSV file to begin</h2>
+      <p>Click <strong>Choose File</strong> in the top bar to load your SmartQC results CSV.</p>
+      <div class="empty-actions">
+        <button class="btn btn-blue btn-sm" onclick="loadDemoData()">▶ Load Demo Data</button>
+      </div>
+    </div>`;
+  _verifiedStreak = 0; _lastMilestone = 0;
+  toast('↺ Everything has been reset', '');
+}
+
+// ── MILESTONE & ENCOURAGEMENT SYSTEM ─────────────────────────────────
+let _verifiedStreak  = 0;  // consecutive submits without skip
+let _lastMilestone   = 0;  // last milestone count triggered
+let _milestoneTimer  = null;
+
+// Milestones: {at: count, icon, title, sub(name), confetti}
+const MILESTONES = [
+  { at:1,  icon:'🚀', title:n=>`You're off, ${n}!`,          sub:'First document verified. Great start!',                confetti:false },
+  { at:3,  icon:'🔥', title:n=>`On a roll, ${n}!`,           sub:'3 down. You\'re building momentum!',                   confetti:false },
+  { at:5,  icon:'⭐', title:n=>`Halfway there, ${n}!`,       sub:'5 records verified. Keep it up!',                      confetti:true  },
+  { at:10, icon:'🏆', title:n=>`Perfect 10, ${n}!`,          sub:'10 records verified. You\'re flying!',                 confetti:true  },
+  { at:25, icon:'💎', title:n=>`25 Records, ${n}!`,          sub:'Incredible focus. You\'re a QC machine!',              confetti:true  },
+  { at:50, icon:'🎯', title:n=>`50 Done, ${n}!`,             sub:'Halfway through a large batch. Legend!',               confetti:true  },
+  { at:100,icon:'👑', title:n=>`100 Verified, ${n}!`,        sub:'Absolute unit. Nothing stops you!',                    confetti:true  },
+];
+
+// Encouragement quotes — shown randomly as mini-toasts between docs
+const QUIPS = [
+  n=>`👀 Sharp eyes catch errors others miss, ${n}.`,
+  n=>`☕ You're doing great — stay sharp, ${n}!`,
+  n=>`🎯 Accuracy is your superpower, ${n}.`,
+  n=>`💡 Every record you check protects a real person.`,
+  n=>`🧠 Your eye for detail matters, ${n}.`,
+  n=>`📋 Quality over speed — you've got this!`,
+  n=>`🌟 Another one down. Excellent work, ${n}!`,
+  n=>`🦅 Eagle-eyed as always, ${n}!`,
+  n=>`🏅 The data is better because of you.`,
+  n=>`🔍 Precision. Focus. ${n}.`,
+];
+let _quipIdx = 0;
+function _nextQuip() {
+  _quipIdx = (_quipIdx + 7) % QUIPS.length;
+  const name = USERNAME ? USERNAME.split(' ')[0] : 'there';
+  return QUIPS[_quipIdx](name);
+}
+
+// Called after every successful submit
+function _onVerifiedSuccess() {
+  _verifiedStreak++;
+  const total = Object.values(V).filter(v=>!v.skipped).length;
+  const name  = USERNAME ? USERNAME.split(' ')[0] : 'there';
+  const hit   = MILESTONES.filter(m => m.at <= total && m.at > _lastMilestone).pop();
+  if (hit) {
+    _lastMilestone = hit.at;
+    showMilestone(hit.icon, hit.title(name), hit.sub);
+    if (hit.confetti) launchConfetti();
+  } else if (_verifiedStreak % 2 === 0) {
+    showMilestone('💬', 'Nice work!', _nextQuip());
+  }
+}
+
+let _mBannerTimer = null;
+function showMilestone(icon, title, sub) {
+  const banner = document.getElementById('milestone-banner');
+  document.getElementById('m-icon').textContent  = icon;
+  document.getElementById('m-title').textContent = title;
+  document.getElementById('m-sub').textContent   = sub;
+  // Reset animation bar by cloning it
+  const oldBar = document.getElementById('m-bar');
+  const newBar = oldBar.cloneNode(true); newBar.id='m-bar';
+  oldBar.replaceWith(newBar);
+  // Show
+  banner.classList.add('show');
+  clearTimeout(_mBannerTimer);
+  _mBannerTimer = setTimeout(() => hideMilestone(), 4200);
+}
+function hideMilestone() {
+  document.getElementById('milestone-banner').classList.remove('show');
+  clearTimeout(_mBannerTimer);
+}
+
+// ── CONFETTI ──────────────────────────────────────────────────────────
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const COLORS = ['#3b6ef8','#17a96e','#f59e0b','#e5354e','#7c3aed','#06b6d4','#ec4899'];
+  const pieces = Array.from({length: 90}, () => ({
+    x:  Math.random() * canvas.width,
+    y: -10 - Math.random() * 60,
+    r:  4 + Math.random() * 5,
+    d:  2 + Math.random() * 3,
+    color: COLORS[Math.floor(Math.random()*COLORS.length)],
+    tilt:  Math.random() * 10 - 5,
+    tiltAngle: 0,
+    tiltSpeed: 0.05 + Math.random() * 0.1,
+    shape: Math.random() > 0.5 ? 'rect' : 'circle',
+  }));
+
+  let frame = 0; const maxFrames = 110;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      ctx.beginPath();
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, 1 - frame / maxFrames);
+      if (p.shape === 'circle') {
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      } else {
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.tiltAngle * Math.PI / 180);
+        ctx.fillRect(-p.r, -p.r/2, p.r*2, p.r); ctx.restore();
+      }
+      ctx.fill();
+      p.y += p.d + Math.sin(frame * 0.05) * 1.2;
+      p.x += Math.sin(frame * 0.02 + p.tilt) * 1.5;
+      p.tiltAngle += p.tiltSpeed * 360;
+    });
+    ctx.globalAlpha = 1;
+    frame++;
+    if (frame < maxFrames) requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  requestAnimationFrame(draw);
+}
+
+// ── PATCH submit() to call encouragement hooks ────────────────────────
+const _origSubmit_before = submit;
+window.submit = function(idx) {
+  const before = Object.keys(V).length;
+  _origSubmit_before(idx);
+  const after = Object.keys(V).length;
+  if (after > before) _onVerifiedSuccess();
+};
+
+// ── INIT — resume session or greet new user ───────────────────────────
+(function init() {
+  if (loadSession() && ROWS.length) {
+    buildSB(); updateProg(); updateHeaderGreeting();
+    _lastMilestone = Object.values(V).filter(v=>!v.skipped).length;
+    const fp = ROWS.findIndex(r => !V[r.ref_id]);
+    setTimeout(() => {
+      sel(fp >= 0 ? fp : 0);
+      const done = Object.keys(V).length;
+      const name = USERNAME ? USERNAME.split(' ')[0] : 'there';
+      toast(`Resumed — ${done} of ${ROWS.length} records restored`, 'ok');
+      if (done > 0) setTimeout(() => showMilestone('👋', `Welcome back, ${name}!`, `You've already verified ${done} record${done!==1?'s':''} — keep it going!`), 800);
+    }, 250);
+  } else {
+    // New user — show welcome + ask name when they go to load data
+    // The importCSV and loadDemoData will trigger the username modal
+    // Also intercept loadDemoData:
+    const _origDemo = loadDemoData;
+    window.loadDemoData = function() {
+      if (!USERNAME) {
+        showUsernameModal(_origDemo);
+      } else {
+        _origDemo();
+      }
+    };
+  }
+})();
+</script>
+</body>
+</html>

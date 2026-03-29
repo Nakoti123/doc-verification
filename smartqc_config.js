@@ -1,0 +1,147 @@
+/**
+ * ═══════════════════════════════════════════════════════════════
+ *  SmartQC Verifier — Central Configuration File
+ *  Edit this file to change any behaviour across the entire app.
+ * ═══════════════════════════════════════════════════════════════
+ */
+const SMARTQC_CONFIG = {
+
+  // ── API ─────────────────────────────────────────────────────────
+  api: {
+    /** CORS proxy base URL (run proxy_server.py locally) */
+    proxyBase: 'http://localhost:8080',
+    /** Proxy endpoint path */
+    proxyPath: '/getdocument',
+    /** Query param name sent to proxy (and forwarded to real API) */
+    refIdParam: 'ref_id',
+    /** Request timeout in milliseconds */
+    timeoutMs: 20000,
+  },
+
+  // ── CSV COLUMN MAPPING ───────────────────────────────────────────
+  // Map logical field names → actual CSV column headers.
+  // Change ONLY the values (right side) to match your CSV columns.
+  csv: {
+    columns: {
+      refId:         'Payload Ref ID',   // Unique document reference ID
+      modelResponse: 'model_responce',   // Raw model JSON string
+      docType:       'Doc_type',         // Document type (pan / dl / etc.)
+      disResponse:   'dis_responce',     // DIS API response string
+      remarks:       'remarks',          // Annotator remarks
+    },
+    /** Normalise doc_type values → internal keys used throughout app */
+    docTypeAliases: {
+      'pan':  'pan',
+      'PAN':  'pan',
+      'dl':   'dl',
+      'DL':   'dl',
+      'dl ':  'dl',   // trailing space guard
+    },
+  },
+
+  // ── DOCUMENT STATUS OPTIONS ──────────────────────────────────────
+  // Shown as a dropdown on every verification form.
+  // Add / remove / rename entries freely — the rest of the app adapts.
+  docStatusOptions: [
+    { value: '',                    label: '— Select document status —' },
+    { value: 'clear',               label: '✅ Clear / Good Quality' },
+    { value: 'blur',                label: '🌫 Blurred / Out of Focus' },
+    { value: 'tilted',              label: '↗ Tilted / Rotated' },
+    { value: 'bw',                  label: '🖤 Black & White / Low Contrast' },
+    { value: 'wrong_doc',           label: '🔄 Wrong Document Submitted' },
+    { value: 'partial',             label: '✂ Partial / Cropped Document' },
+    { value: 'glare',               label: '💡 Glare / Reflection' },
+    { value: 'damaged',             label: '🔥 Damaged / Torn Document' },
+    { value: 'other',               label: '… Other (see remarks)' },
+  ],
+
+  // ── DOCUMENT TYPE DEFINITIONS ────────────────────────────────────
+  // Each doc type lists its mandatory fields for manual entry + CER.
+  // key        → internal identifier (must match docTypeAliases values)
+  // label      → display name
+  // color      → CSS variable suffix for badge colour (defined in CSS)
+  // fields     → array of form fields, in order
+  //   k        → field key (used in saved data & CSV export)
+  //   l        → display label
+  //   ph       → placeholder text
+  //   full     → (optional) true = spans both columns
+  //   modelKey → hint(s) to search model response for autofill
+  docTypes: {
+    pan: {
+      label: 'PAN Card',
+      color: 'amber',
+      fields: [
+        { k: 'name',      l: 'Name',          ph: 'e.g. RAJESH KUMAR',  modelKey: ['name'] },
+        { k: 'pan_no',    l: 'PAN Number',     ph: 'e.g. ABCDE1234F',   modelKey: ['id number', 'pan'] },
+        { k: 'father',    l: "Father's Name",  ph: 'e.g. RAM KUMAR',    modelKey: ['father', 'swid', 'guardian'] },
+        { k: 'dob',       l: 'Date of Birth',  ph: 'DD-MM-YYYY',        modelKey: ['dob', 'dateofbirth', 'birth'] },
+      ],
+    },
+    dl: {
+      label: 'Driving Licence',
+      color: 'blue',
+      fields: [
+        { k: 'name',     l: 'Name',              ph: 'e.g. RAJESH KUMAR',           modelKey: ['name'] },
+        { k: 'dl_no',    l: 'DL Number',          ph: 'e.g. DL-0420110149646',       modelKey: ['id number', 'dl'] },
+        { k: 'father',   l: "Father's Name",      ph: 'e.g. SH PARKASH',            modelKey: ['father', 'swid', 'guardian'] },
+        { k: 'dob',      l: 'Date of Birth',      ph: 'DD-MM-YYYY',                 modelKey: ['dob', 'dateofbirth', 'birth'] },
+        { k: 'expiry',   l: 'Date of Expiry',     ph: 'DD-MM-YYYY',                 modelKey: ['expiry', 'valid till (non', 'validtillnon'] },
+        { k: 'validity', l: 'Date of Validity',   ph: 'DD-MM-YYYY',                 modelKey: ['dateofissue', 'date of issue'] },
+        { k: 'address',  l: 'Address',             ph: 'Full address on document',   modelKey: ['address'], full: true },
+      ],
+    },
+    // ── Add more doc types here, e.g. aadhaar, passport, voter_id ──
+    // aadhaar: {
+    //   label: 'Aadhaar Card',
+    //   color: 'green',
+    //   fields: [
+    //     { k: 'name',    l: 'Name',         ph: 'e.g. RAJESH KUMAR', modelKey: ['name'] },
+    //     { k: 'uid',     l: 'Aadhaar No.',  ph: 'XXXX XXXX XXXX',    modelKey: ['uid', 'aadhaar', 'id number'] },
+    //     { k: 'dob',     l: 'Date of Birth',ph: 'DD-MM-YYYY',        modelKey: ['dob'] },
+    //     { k: 'address', l: 'Address',      ph: 'Full address',      modelKey: ['address'], full: true },
+    //   ],
+    // },
+  },
+
+  // ── CSV EXPORT COLUMNS ───────────────────────────────────────────
+  // Controls which columns appear in the exported CSV and their order.
+  // 'key' must match a field k above, or a built-in: ref_id, doc_type,
+  // status, doc_status, avg_cer_pct, timestamp
+  exportColumns: [
+    { key: 'ref_id',       header: 'ref_id' },
+    { key: 'doc_type',     header: 'doc_type' },
+    { key: 'status',       header: 'verification_status' },
+    { key: 'doc_status',   header: 'document_status' },
+    { key: 'name',         header: 'name' },
+    { key: 'pan_no',       header: 'pan_number' },
+    { key: 'dl_no',        header: 'dl_number' },
+    { key: 'father',       header: 'father_name' },
+    { key: 'dob',          header: 'date_of_birth' },
+    { key: 'expiry',       header: 'date_of_expiry' },
+    { key: 'validity',     header: 'date_of_validity' },
+    { key: 'address',      header: 'address' },
+    { key: 'avg_cer_pct',  header: 'avg_cer_pct' },
+    { key: 'timestamp',    header: 'verified_at' },
+  ],
+
+  // ── SESSION ──────────────────────────────────────────────────────
+  session: {
+    /** localStorage key for persisting progress across page reloads */
+    storageKey: 'smartqc_session_v4',
+  },
+
+  // ── UI LABELS ────────────────────────────────────────────────────
+  // Change display text without touching layout code
+  ui: {
+    appName:           'DocVerify',
+    appShortName:      'QC',
+    loadBtnText:       '⬇ Load',
+    autofillBtnText:   '⚡ Autofill',
+    submitBtnText:     '✓ Submit',
+    skipBtnText:       'Skip',
+    exportBtnText:     '⬇ CSV',
+    reportBtnText:     '📊 Report',
+    docStatusLabel:    'Document Status',
+  },
+
+};
